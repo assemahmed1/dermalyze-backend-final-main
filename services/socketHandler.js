@@ -4,11 +4,6 @@ const Message = require("../models/Message");
 const Conversation = require("../models/Conversation");
 
 const socketHandler = (io) => {
-  // 🔍 Diagnostic: Catch low-level engine errors
-  io.engine.on("connection_error", (err) => {
-    console.log("Socket connection error:", err.req, err.code, err.message, err.context);
-  });
-
   // Authentication Middleware for Socket.io
   io.use(async (socket, next) => {
     try {

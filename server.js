@@ -25,7 +25,6 @@ const socketHandler = require("./services/socketHandler");
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
-const hpp = require("hpp");
 
 const app = express();
 const server = http.createServer(app);
@@ -56,8 +55,18 @@ app.use(mongoSanitize());
 // 5) Data sanitization against XSS
 app.use(xss());
 
-// 6) Prevent parameter pollution
-app.use(hpp());
+// 6) Prevent parameter pollution (Modern Node.js 22+ compatible)
+app.use((req, res, next) => {
+  if (req.query) {
+    const sanitized = {};
+    for (const key of Object.keys(req.query)) {
+      const val = req.query[key];
+      sanitized[key] = Array.isArray(val) ? val[val.length - 1] : val;
+    }
+    Object.assign(req.query, sanitized);
+  }
+  next();
+});
 
 connectDB();
 
