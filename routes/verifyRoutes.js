@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const { verifyIdentity } = require("../controllers/verifyController");
 const protect = require("../middlewares/authMiddleware");
-const { requireRole } = require("../middlewares/roleMiddleware");
+const requireRole = require("../middlewares/roleMiddleware");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
