@@ -79,8 +79,8 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    // Compare password using bcrypt
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Compare password using model method
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid password" });
     }

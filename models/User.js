@@ -51,23 +51,28 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Unified pre-save hook for password hashing and doctor code generation
-userSchema.pre("save", async function (next) {
+/**
+ * Unified pre-save hook for password hashing and doctor code generation.
+ * NOTE: Modern Mongoose async hooks should not use 'next' to avoid 
+ * "next is not a function" errors.
+ */
+userSchema.pre("save", async function () {
   // 1. Handle Password Hashing
   if (this.isModified("password")) {
-    try {
-      this.password = await bcrypt.hash(this.password, 10);
-    } catch (error) {
-      return next(error);
-    }
+    this.password = await bcrypt.hash(this.password, 10);
   }
 
   // 2. Handle Doctor Code Generation
   if (this.role === "doctor" && !this.doctorCode) {
     this.doctorCode = generateDoctorCode();
   }
-
-  next();
 });
+
+/**
+ * Convenience method to check password matches.
+ */
+userSchema.methods.comparePassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 module.exports = mongoose.model("User", userSchema);
