@@ -1,3 +1,4 @@
+const { HfInference } = require("@huggingface/inference");
 const Analysis = require("../models/Analysis");
 const Patient = require("../models/Patient");
 const cloudinary = require("../config/cloudinary");
@@ -28,39 +29,17 @@ async function analyzeSkin(imageBuffer) {
     }
     
     // Log sanitized token for debugging (First 4 chars)
-    console.log(`AI Analysis attempting with token: ${token.substring(0, 4)}****`);
+    console.log(`AI Analysis SDK attempting with token: ${token.substring(0, 4)}****`);
 
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/Ismail-Amroune/skin-diseases-classification",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/octet-stream"
-        },
-        body: imageBuffer
-      }
-    );
+    const hf = new HfInference(token);
+    
+    // Use the SDK to perform image classification
+    const data = await hf.imageClassification({
+      model: "Ismail-Amroune/skin-diseases-classification",
+      data: imageBuffer
+    });
 
-    // 🔍 Handle non-OK responses (like 401 Unauthorized or 404)
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Hugging Face API Error (${response.status}):`, errorText.substring(0, 100));
-      
-      if (response.status === 401) {
-        return "Analysis error: Invalid HF_API_TOKEN";
-      }
-      return `Analysis service error (${response.status})`;
-    }
-
-    const data = await response.json();
-
-    // Handle model loading or error response
-    if (data.error) {
-      return `Analysis pending: ${data.error}`;
-    }
-
-    // Get top prediction result
+    // Handle SDK response (typically an array of {label, score})
     if (Array.isArray(data) && data.length > 0) {
       const top = data[0];
       const confidence = (top.score * 100).toFixed(1);
@@ -70,7 +49,16 @@ async function analyzeSkin(imageBuffer) {
     return "Unable to analyze image";
 
   } catch (error) {
-    console.error("Hugging Face API connection error:", error.message);
+    console.error("Hugging Face SDK error:", error.message);
+    
+    // Specific error handling for common issues
+    if (error.message.includes("404")) {
+      return "Analysis error: Model endpoint unavailable (404)";
+    }
+    if (error.message.includes("401")) {
+      return "Analysis error: Invalid API token (401)";
+    }
+    
     return "Analysis service unavailable";
   }
 }
