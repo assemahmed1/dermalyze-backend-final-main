@@ -1,0 +1,1 @@
+{"disease":"Psoriasis","totalPatients":1,"bestDrug":"Moisturizer","highestRecovery":75,"avgRecovery":75,"insights":[{"name":"Moisturizer","totalCases":1,"avgRecovery":75,"patients":[{"name":"John Doe","recoveryProgress":75,"weeksOfTreatment":1}]}]}
