@@ -51,10 +51,11 @@ const userSchema = new mongoose.Schema({
 });
 
 // Auto-generate doctor code before save
-userSchema.pre("save", function () {
+userSchema.pre("save", function (next) {
   if (this.role === "doctor" && !this.doctorCode) {
     this.doctorCode = generateDoctorCode();
   }
+  next();
 });
 
 module.exports = mongoose.model("User", userSchema);
