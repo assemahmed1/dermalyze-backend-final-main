@@ -1,0 +1,451 @@
+[0;34m======================================================================[0m
+[0;34m  Starting Exhaustive API Test Suite: https://dermalyze-backend-production.up.railway.app[0m
+[0;34m======================================================================[0m
+
+[0;34m--- Phase 1: Doctor Authentication & Identity ---[0m
+
+[1;33mTEST:[0m  [POST /api/auth/register]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "User registered successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZTE3NzI1OTBkOTI1NzFmOTQ5NmYyNyIsInJvbGUiOiJkb2N0b3IiLCJpYXQiOjE3NzYzODM3ODEsImV4cCI6MTc3ODk3NTc4MX0.emk_0NEeqoISXHbxWt8jfriB3g1jLQo6QbayxfF3fTc",
+  "user": {
+    "_id": "69e1772590d92571f9496f27",
+    "name": "Dr. Exhaustive",
+    "email": "dr_exhaustive_1776383781@example.com",
+    "role": "doctor",
+    "doctorCode": "DOC-DWBBMN"
+  }
+}
+201
+jq: error (at <stdin>:2): Cannot index number with string "token"
+jq: error (at <stdin>:2): Cannot index number with string "user"
+
+[1;33mTEST:[0m  [POST /api/auth/login]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZTE3NzI1OTBkOTI1NzFmOTQ5NmYyNyIsInJvbGUiOiJkb2N0b3IiLCJpYXQiOjE3NzYzODM3ODIsImV4cCI6MTc3ODk3NTc4Mn0.e8EQuTQyCGfuvkj_MtPPTk5F9f4oA3XjmKpsLyqi0zU",
+  "user": {
+    "_id": "69e1772590d92571f9496f27",
+    "name": "Dr. Exhaustive",
+    "email": "dr_exhaustive_1776383781@example.com",
+    "role": "doctor",
+    "doctorCode": "DOC-DWBBMN"
+  }
+}
+200
+
+[1;33mTEST:[0m Identity (Me) [GET /api/me]
+[0;32m✅ PASS (Status: 200)[0m
+{
+  "_id": "69e1772590d92571f9496f27",
+  "name": "Dr. Exhaustive",
+  "email": "dr_exhaustive_1776383781@example.com",
+  "role": "doctor",
+  "fcmToken": null,
+  "notificationsEnabled": true,
+  "doctorCode": "DOC-DWBBMN",
+  "__v": 0
+}
+
+[1;33mTEST:[0m Verify Identity [POST /api/auth/verify-identity]
+[0;31m❌ FAIL (Status: 400)[0m
+{
+  "verified": false,
+  "faceMatch": false,
+  "isDoctor": false,
+  "similarity": 0,
+  "message": "Face verification service error"
+}
+
+[0;34m--- Phase 2: Patient Management ---[0m
+
+[1;33mTEST:[0m  [POST /api/patients]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "name": "Patient Verbo",
+  "age": 28,
+  "gender": "male",
+  "nationalId": "",
+  "phone": "",
+  "address": "",
+  "medicalHistory": "",
+  "diagnosis": "Psoriasis",
+  "status": "Stable",
+  "recoveryProgress": 0,
+  "doctor": "69e1772590d92571f9496f27",
+  "_id": "69e1772c90d92571f9496f2c",
+  "images": [],
+  "createdAt": "2026-04-16T23:56:28.602Z",
+  "updatedAt": "2026-04-16T23:56:28.602Z",
+  "__v": 0
+}
+201
+0
+jq: error (at <stdin>:2): Cannot index number with string "_id"
+jq: error (at <stdin>:3): Cannot index number with string "_id"
+
+[1;33mTEST:[0m List Patients [GET /api/patients]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1772c90d92571f9496f2c",
+    "name": "Patient Verbo",
+    "age": 28,
+    "gender": "male",
+    "nationalId": "",
+    "phone": "",
+    "address": "",
+    "medicalHistory": "",
+    "diagnosis": "Psoriasis",
+    "status": "Stable",
+    "recoveryProgress": 0,
+    "doctor": "69e1772590d92571f9496f27",
+    "images": [],
+    "createdAt": "2026-04-16T23:56:28.602Z",
+    "updatedAt": "2026-04-16T23:56:28.602Z",
+    "__v": 0
+  }
+]
+
+[1;33mTEST:[0m Get Patient By ID [GET /api/patients/69e1772c90d92571f9496f2c]
+[0;32m✅ PASS (Status: 200)[0m
+{
+  "_id": "69e1772c90d92571f9496f2c",
+  "name": "Patient Verbo",
+  "age": 28,
+  "gender": "male",
+  "nationalId": "",
+  "phone": "",
+  "address": "",
+  "medicalHistory": "",
+  "diagnosis": "Psoriasis",
+  "status": "Stable",
+  "recoveryProgress": 0,
+  "doctor": "69e1772590d92571f9496f27",
+  "images": [],
+  "createdAt": "2026-04-16T23:56:28.602Z",
+  "updatedAt": "2026-04-16T23:56:28.602Z",
+  "__v": 0
+}
+
+[1;33mTEST:[0m  [PUT /api/patients/69e1772c90d92571f9496f2c/status]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "_id": "69e1772c90d92571f9496f2c",
+  "name": "Patient Verbo",
+  "age": 28,
+  "gender": "male",
+  "nationalId": "",
+  "phone": "",
+  "address": "",
+  "medicalHistory": "",
+  "diagnosis": "Psoriasis",
+  "status": "Improving",
+  "recoveryProgress": 0,
+  "doctor": "69e1772590d92571f9496f27",
+  "images": [],
+  "createdAt": "2026-04-16T23:56:28.602Z",
+  "updatedAt": "2026-04-16T23:56:30.311Z",
+  "__v": 0
+}
+200
+0
+
+[1;33mTEST:[0m  [PUT /api/patients/69e1772c90d92571f9496f2c/recovery]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "Recovery progress updated",
+  "patient": {
+    "_id": "69e1772c90d92571f9496f2c",
+    "name": "Patient Verbo",
+    "age": 28,
+    "gender": "male",
+    "nationalId": "",
+    "phone": "",
+    "address": "",
+    "medicalHistory": "",
+    "diagnosis": "Psoriasis",
+    "status": "Improving",
+    "recoveryProgress": 45,
+    "doctor": "69e1772590d92571f9496f27",
+    "images": [],
+    "createdAt": "2026-04-16T23:56:28.602Z",
+    "updatedAt": "2026-04-16T23:56:30.911Z",
+    "__v": 0
+  }
+}
+200
+0
+
+[1;33mTEST:[0m AI Analysis Upload [POST /api/analysis/69e1772c90d92571f9496f2c]
+[0;32m✅ PASS (Status: 201)[0m
+{
+  "message": "Analysis added to patient file",
+  "analysis": {
+    "patient": "69e1772c90d92571f9496f2c",
+    "doctor": "69e1772590d92571f9496f27",
+    "imageUrl": "https://res.cloudinary.com/daraqfmov/image/upload/v1776383794/dermalyze/analyses/q7mofvdvokbibvovs0ts.jpg",
+    "result": "Analysis error (404)",
+    "_id": "69e1773390d92571f9496f33",
+    "createdAt": "2026-04-16T23:56:35.685Z",
+    "updatedAt": "2026-04-16T23:56:35.685Z",
+    "__v": 0
+  }
+}
+
+[1;33mTEST:[0m Doctor's Patients View [GET /api/doctor/patients]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1772c90d92571f9496f2c",
+    "name": "Patient Verbo",
+    "age": 28,
+    "gender": "male",
+    "nationalId": "",
+    "phone": "",
+    "address": "",
+    "medicalHistory": "",
+    "diagnosis": "Psoriasis",
+    "status": "Improving",
+    "recoveryProgress": 45,
+    "doctor": "69e1772590d92571f9496f27",
+    "images": [],
+    "createdAt": "2026-04-16T23:56:28.602Z",
+    "updatedAt": "2026-04-16T23:56:30.911Z",
+    "__v": 0
+  }
+]
+
+[1;33mTEST:[0m Doctor's Patient Analyses [GET /api/doctor/patient/69e1772c90d92571f9496f2c/analyses]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1773390d92571f9496f33",
+    "patient": "69e1772c90d92571f9496f2c",
+    "doctor": "69e1772590d92571f9496f27",
+    "imageUrl": "https://res.cloudinary.com/daraqfmov/image/upload/v1776383794/dermalyze/analyses/q7mofvdvokbibvovs0ts.jpg",
+    "result": "Analysis error (404)",
+    "createdAt": "2026-04-16T23:56:35.685Z",
+    "updatedAt": "2026-04-16T23:56:35.685Z",
+    "__v": 0
+  }
+]
+
+[1;33mTEST:[0m General Patient Analyses [GET /api/patient/69e1772c90d92571f9496f2c/analyses]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1773390d92571f9496f33",
+    "patient": "69e1772c90d92571f9496f2c",
+    "doctor": "69e1772590d92571f9496f27",
+    "imageUrl": "https://res.cloudinary.com/daraqfmov/image/upload/v1776383794/dermalyze/analyses/q7mofvdvokbibvovs0ts.jpg",
+    "result": "Analysis error (404)",
+    "createdAt": "2026-04-16T23:56:35.685Z",
+    "updatedAt": "2026-04-16T23:56:35.685Z",
+    "__v": 0
+  }
+]
+
+[0;34m--- Phase 3: Medication Management ---[0m
+
+[1;33mTEST:[0m  [POST /api/patient/69e1772c90d92571f9496f2c/medications]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "Medication added",
+  "medication": {
+    "patient": "69e1772c90d92571f9496f2c",
+    "doctor": "69e1772590d92571f9496f27",
+    "name": "Dermalin",
+    "dosage": "10mg",
+    "frequency": "Daily",
+    "isActive": true,
+    "notes": "",
+    "_id": "69e1773590d92571f9496f3a",
+    "createdAt": "2026-04-16T23:56:37.954Z",
+    "updatedAt": "2026-04-16T23:56:37.954Z",
+    "__v": 0
+  }
+}
+201
+0
+jq: error (at <stdin>:2): Cannot index number with string "medication"
+jq: error (at <stdin>:3): Cannot index number with string "medication"
+
+[1;33mTEST:[0m List Medications [GET /api/patient/69e1772c90d92571f9496f2c/medications]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1773590d92571f9496f3a",
+    "patient": "69e1772c90d92571f9496f2c",
+    "doctor": "69e1772590d92571f9496f27",
+    "name": "Dermalin",
+    "dosage": "10mg",
+    "frequency": "Daily",
+    "isActive": true,
+    "notes": "",
+    "createdAt": "2026-04-16T23:56:37.954Z",
+    "updatedAt": "2026-04-16T23:56:37.954Z",
+    "__v": 0
+  }
+]
+
+[1;33mTEST:[0m  [PUT /api/medications/69e1773590d92571f9496f3a]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "Medication updated",
+  "medication": {
+    "_id": "69e1773590d92571f9496f3a",
+    "patient": "69e1772c90d92571f9496f2c",
+    "doctor": "69e1772590d92571f9496f27",
+    "name": "Dermalin",
+    "dosage": "15mg",
+    "frequency": "Daily",
+    "isActive": true,
+    "notes": "",
+    "createdAt": "2026-04-16T23:56:37.954Z",
+    "updatedAt": "2026-04-16T23:56:39.128Z",
+    "__v": 0
+  }
+}
+200
+0
+
+[1;33mTEST:[0m Delete Medication [DELETE /api/medications/69e1773590d92571f9496f3a]
+[0;32m✅ PASS (Status: 200)[0m
+{
+  "message": "Medication deleted"
+}
+
+[0;34m--- Phase 4: Multi-User Flow (Chat & Linking) ---[0m
+
+[1;33mTEST:[0m  [POST /api/auth/register]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "User registered successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZTE3NzM4OTBkOTI1NzFmOTQ5NmY0MiIsInJvbGUiOiJwYXRpZW50IiwiaWF0IjoxNzc2MzgzODAxLCJleHAiOjE3Nzg5NzU4MDF9.2oFl2qb9gxebdymIujBZ1cPqKZfEgWL11nYy3SNn-rM",
+  "user": {
+    "_id": "69e1773890d92571f9496f42",
+    "name": "Exhaustive Patient",
+    "email": "pt_exhaustive_1776383781@example.com",
+    "role": "patient",
+    "doctorCode": null
+  }
+}
+201
+0
+0
+jq: error (at <stdin>:2): Cannot index number with string "token"
+jq: error (at <stdin>:3): Cannot index number with string "token"
+jq: error (at <stdin>:4): Cannot index number with string "token"
+jq: error (at <stdin>:2): Cannot index number with string "user"
+jq: error (at <stdin>:3): Cannot index number with string "user"
+jq: error (at <stdin>:4): Cannot index number with string "user"
+
+[1;33mTEST:[0m  [POST /api/link-doctor]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "Doctor linked successfully",
+  "doctor": "Dr. Exhaustive"
+}
+200
+0
+0
+
+[1;33mTEST:[0m  [POST /api/chat/conversations]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "participants": [
+    "69e1772590d92571f9496f27",
+    "69e1773890d92571f9496f42"
+  ],
+  "_id": "69e1773a90d92571f9496f47",
+  "createdAt": "2026-04-16T23:56:42.511Z",
+  "updatedAt": "2026-04-16T23:56:42.511Z",
+  "__v": 0
+}
+201
+0
+jq: error (at <stdin>:2): Cannot index number with string "_id"
+jq: error (at <stdin>:3): Cannot index number with string "_id"
+
+[1;33mTEST:[0m Doctor Chat List [GET /api/chat/conversations]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1773a90d92571f9496f47",
+    "participants": [
+      {
+        "_id": "69e1772590d92571f9496f27",
+        "name": "Dr. Exhaustive",
+        "email": "dr_exhaustive_1776383781@example.com",
+        "role": "doctor"
+      },
+      {
+        "_id": "69e1773890d92571f9496f42",
+        "name": "Exhaustive Patient",
+        "email": "pt_exhaustive_1776383781@example.com",
+        "role": "patient"
+      }
+    ],
+    "createdAt": "2026-04-16T23:56:42.511Z",
+    "updatedAt": "2026-04-16T23:56:42.511Z",
+    "__v": 0
+  }
+]
+
+[1;33mTEST:[0m Patient Chat List [GET /api/chat/conversations]
+[0;32m✅ PASS (Status: 200)[0m
+[
+  {
+    "_id": "69e1773a90d92571f9496f47",
+    "participants": [
+      {
+        "_id": "69e1772590d92571f9496f27",
+        "name": "Dr. Exhaustive",
+        "email": "dr_exhaustive_1776383781@example.com",
+        "role": "doctor"
+      },
+      {
+        "_id": "69e1773890d92571f9496f42",
+        "name": "Exhaustive Patient",
+        "email": "pt_exhaustive_1776383781@example.com",
+        "role": "patient"
+      }
+    ],
+    "createdAt": "2026-04-16T23:56:42.511Z",
+    "updatedAt": "2026-04-16T23:56:42.511Z",
+    "__v": 0
+  }
+]
+
+[1;33mTEST:[0m Fetch History [GET /api/chat/messages/69e1773a90d92571f9496f47]
+[0;32m✅ PASS (Status: 200)[0m
+[]
+
+[0;34m--- Phase 5: Stats & History ---[0m
+
+[1;33mTEST:[0m Doctor Dashboard Stats [GET /api/doctor/stats]
+[0;32m✅ PASS (Status: 200)[0m
+{
+  "totalPatients": 1,
+  "criticalCases": 0,
+  "activeToday": 1,
+  "infectedPeople": 1
+}
+
+[1;33mTEST:[0m Doctor Analysis History [GET /api/doctor/history?disease=Psoriasis]
+[0;32m✅ PASS (Status: 200)[0m
+{
+  "disease": "Psoriasis",
+  "totalPatients": 1,
+  "bestDrug": null,
+  "highestRecovery": 0,
+  "avgRecovery": 0,
+  "insights": []
+}
+
+[0;34m======================================================================[0m
+[0;32m  Exhaustive Test Suite Finished![0m
+[0;34m======================================================================[0m
