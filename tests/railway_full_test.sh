@@ -1,17 +1,23 @@
 #!/bin/bash
 
 # ==============================================================================
-# Dermalyze Backend - Verbose Live API Test Suite & Debugger
+# Dermalyze Backend - Exhaustive Live API Test Suite
 # ==============================================================================
 
 # Configuration
 BASE_URL="https://dermalyze-backend-production.up.railway.app"
-TIMESTAMP=$(date +%s)
-TEST_EMAIL="doctor_verbose_${TIMESTAMP}@example.com"
-TEST_PASSWORD="Password123!"
-SAMPLE_IMAGE="tests/assets/sample_skin.png"
+TS=$(date +%s)
+DOCTOR_EMAIL="dr_exhaustive_${TS}@example.com"
+PATIENT_EMAIL="pt_exhaustive_${TS}@example.com"
+PWD="Password123!"
 
-# Colors for output
+# Assets
+SKIN_IMG="tests/assets/sample_skin.png"
+ID_FRONT="tests/assets/id_front.jpg"
+ID_BACK="tests/assets/id_front.jpg" # Reuse front if back is tiny/invalid
+SELFIE="tests/assets/sample_skin.png" # Use a real image for selfie
+
+# Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -19,128 +25,140 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}======================================================================${NC}"
-echo -e "${BLUE}  Starting Verbose API Test & Report: ${BASE_URL}${NC}"
+echo -e "${BLUE}  Starting Exhaustive API Test Suite: ${BASE_URL}${NC}"
 echo -e "${BLUE}======================================================================${NC}"
 
-# Helper function to perform requests and capture everything
-# Usage: api_request "METHOD" "PATH" "AUTH_TOKEN" "JSON_BODY" "MULTIPART_FILE_OPTION"
-api_request() {
+# Global storage
+DOCTOR_TOKEN=""
+PATIENT_TOKEN=""
+DOCTOR_CODE=""
+PATIENT_ID=""
+MED_ID=""
+CONV_ID=""
+
+# Helper function
+api_call() {
     local method=$1
     local path=$2
     local token=$3
     local body=$4
-    local file_opt=$5
-    local url="${BASE_URL}${path}"
+    local multipart=$5
+    local label=$6
 
-    echo -e "\n${YELLOW}ENDPOINT:${NC} [${method}] ${path}"
+    echo -e "\n${YELLOW}TEST:${NC} $label [$method $path]"
     
-    local curl_cmd=(curl -s -w "\n%{http_code}" -X "$method" "$url")
-    
-    if [ -n "$token" ]; then
-        curl_cmd+=(-H "Authorization: Bearer $token")
+    local cmd=(curl -s -w "\n%{http_code}" -X "$method" "${BASE_URL}${path}")
+    if [ -n "$token" ]; then cmd+=(-H "Authorization: Bearer $token"); fi
+    if [ -n "$body" ]; then cmd+=(-H "Content-Type: application/json" -d "$body"); fi
+    if [ -n "$multipart" ]; then cmd+=($multipart); fi
+
+    local resp=$( "${cmd[@]}" )
+    local code=$(echo "$resp" | tail -n1)
+    local json=$(echo "$resp" | sed '$d')
+
+    if [[ "$code" =~ ^2 ]]; then
+        echo -e "${GREEN}✅ PASS (Status: $code)${NC}"
+    else
+        echo -e "${RED}❌ FAIL (Status: $code)${NC}"
     fi
+    echo "$json" | jq '.' 2>/dev/null || echo "$json"
     
-    if [ -n "$body" ]; then
-        echo -e "${YELLOW}PAYLOAD:${NC} $body"
-        curl_cmd+=(-H "Content-Type: application/json" -d "$body")
-    fi
-    
-    if [ -n "$file_opt" ]; then
-        echo -e "${YELLOW}FILE:${NC} $file_opt"
-        curl_cmd+=($file_opt)
-    fi
-
-    local response=$( "${curl_cmd[@]}" )
-    local http_code=$(echo "$response" | tail -n1)
-    local body_content=$(echo "$response" | sed '$d')
-
-    echo -e "${YELLOW}STATUS:${NC} $http_code"
-    echo -e "${YELLOW}RESPONSE:${NC}"
-    echo "$body_content" | jq '.' 2>/dev/null || echo "$body_content"
-
-    # Export variables for script logic
-    LAST_BODY="$body_content"
-    LAST_STATUS="$http_code"
+    LAST_BODY="$json"
+    LAST_CODE="$code"
 }
 
-# ==============================================================================
-# 1. AUTHENTICATION FLOW
-# ==============================================================================
-echo -e "\n${BLUE}--- Phase 1: Authentication ---${NC}"
+# ------------------------------------------------------------------------------
+# PHASE 1: DOCTOR AUTH & IDENTITY
+# ------------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Phase 1: Doctor Authentication & Identity ---${NC}"
 
-# Register
-api_request "POST" "/api/auth/register" "" "{\"name\": \"Dr. Verbose\", \"email\": \"$TEST_EMAIL\", \"password\": \"$TEST_PASSWORD\", \"role\": \"doctor\"}"
-if [ "$LAST_STATUS" -ne 201 ]; then echo -e "${RED}Blocker: Registration failed.${NC}"; exit 1; fi
+# Register Doctor
+api_call "POST" "/api/auth/register" "" "{\"name\":\"Dr. Exhaustive\",\"email\":\"$DOCTOR_EMAIL\",\"password\":\"$PWD\",\"role\":\"doctor\"}" "Register"
+DOCTOR_TOKEN=$(echo "$LAST_BODY" | jq -r '.token')
+DOCTOR_CODE=$(echo "$LAST_BODY" | jq -r '.user.doctorCode')
 
-# Login
-api_request "POST" "/api/auth/login" "" "{\"email\": \"$TEST_EMAIL\", \"password\": \"$TEST_PASSWORD\"}"
-TOKEN=$(echo "$LAST_BODY" | jq -r '.token')
-if [ "$TOKEN" == "null" ]; then echo -e "${RED}Blocker: Login failed.${NC}"; exit 1; fi
+# Login Doctor (Verify)
+api_call "POST" "/api/auth/login" "" "{\"email\":\"$DOCTOR_EMAIL\",\"password\":\"$PWD\"}" "Login"
 
-# Me
-api_request "GET" "/api/me" "$TOKEN"
+# Get Me
+api_call "GET" "/api/me" "$DOCTOR_TOKEN" "" "" "Identity (Me)"
 
-# ==============================================================================
-# 2. PATIENT MANAGEMENT
-# ==============================================================================
+# Identity Verification
+api_call "POST" "/api/auth/verify-identity" "$DOCTOR_TOKEN" "" "-F idFront=@$ID_FRONT -F idBack=@$ID_BACK -F selfie=@$SELFIE" "Verify Identity"
+
+# ------------------------------------------------------------------------------
+# PHASE 2: PATIENT MANAGEMENT
+# ------------------------------------------------------------------------------
 echo -e "\n${BLUE}--- Phase 2: Patient Management ---${NC}"
 
 # Create Patient
-api_request "POST" "/api/patients" "$TOKEN" "{\"name\": \"Verbose Patient\", \"age\": 40, \"gender\": \"female\", \"diagnosis\": \"Research test\"}"
+api_call "POST" "/api/patients" "$DOCTOR_TOKEN" "{\"name\":\"Patient Verbo\",\"age\":28,\"gender\":\"male\",\"diagnosis\":\"Psoriasis\"}" "Create Patient"
 PATIENT_ID=$(echo "$LAST_BODY" | jq -r '._id')
-if [ "$PATIENT_ID" == "null" ]; then echo -e "${RED}Blocker: Patient creation failed.${NC}"; exit 1; fi
 
-# Get All Patients
-api_request "GET" "/api/patients" "$TOKEN"
+# Get Patients
+api_call "GET" "/api/patients" "$DOCTOR_TOKEN" "" "" "List Patients"
+api_call "GET" "/api/patients/$PATIENT_ID" "$DOCTOR_TOKEN" "" "" "Get Patient By ID"
 
-# Get Specific Patient
-api_request "GET" "/api/patients/$PATIENT_ID" "$TOKEN"
+# Update Status & Recovery
+api_call "PUT" "/api/patients/$PATIENT_ID/status" "$DOCTOR_TOKEN" "{\"status\":\"Improving\"}" "Update Status"
+api_call "PUT" "/api/patients/$PATIENT_ID/recovery" "$DOCTOR_TOKEN" "{\"progress\":45}" "Update Recovery"
 
-# Update Status
-api_request "PUT" "/api/patients/$PATIENT_ID/status" "$TOKEN" "{\"status\": \"Stable\"}"
+# AI Analysis
+api_call "POST" "/api/analysis/$PATIENT_ID" "$DOCTOR_TOKEN" "" "-F image=@$SKIN_IMG" "AI Analysis Upload"
 
-# ==============================================================================
-# 3. ANALYSIS & HISTORY
-# ==============================================================================
-echo -e "\n${BLUE}--- Phase 3: AI Analysis & Doctor Features ---${NC}"
+# Specialist Doctor Routes
+api_call "GET" "/api/doctor/patients" "$DOCTOR_TOKEN" "" "" "Doctor's Patients View"
+api_call "GET" "/api/doctor/patient/$PATIENT_ID/analyses" "$DOCTOR_TOKEN" "" "" "Doctor's Patient Analyses"
+api_call "GET" "/api/patient/$PATIENT_ID/analyses" "$DOCTOR_TOKEN" "" "" "General Patient Analyses"
 
-# Upload for Analysis
-echo -e "\n${YELLOW}ENDPOINT:${NC} [POST] /api/analysis/$PATIENT_ID"
-if [ ! -f "$SAMPLE_IMAGE" ]; then
-    echo -e "${RED}Error: $SAMPLE_IMAGE missing!${NC}"
-else
-    # Use direct curl for multipart to capture accurately
-    api_request "POST" "/api/analysis/$PATIENT_ID" "$TOKEN" "" "-F image=@$SAMPLE_IMAGE"
-fi
+# ------------------------------------------------------------------------------
+# PHASE 3: MEDICATION MANAGEMENT
+# ------------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Phase 3: Medication Management ---${NC}"
 
-# Get Patient Analyses
-api_request "GET" "/api/patient/$PATIENT_ID/analyses" "$TOKEN"
-
-# Get History
-api_request "GET" "/api/doctor/history" "$TOKEN"
-
-# Get Stats
-api_request "GET" "/api/doctor/stats" "$TOKEN"
-
-# ==============================================================================
-# 4. MEDICATION MANAGEMENT
-# ==============================================================================
-echo -e "\n${BLUE}--- Phase 4: Medication Management ---${NC}"
-
-# Add Medication (Note the path: /api/patient/:id/medications)
-api_request "POST" "/api/patient/$PATIENT_ID/medications" "$TOKEN" "{\"name\": \"TestMed\", \"dosage\": \"5ml\", \"frequency\": \"Twice daily\"}"
+# Add Med
+api_call "POST" "/api/patient/$PATIENT_ID/medications" "$DOCTOR_TOKEN" "{\"name\":\"Dermalin\",\"dosage\":\"10mg\",\"frequency\":\"Daily\"}" "Add Medication"
 MED_ID=$(echo "$LAST_BODY" | jq -r '.medication._id')
 
-# Get Medications
-api_request "GET" "/api/patient/$PATIENT_ID/medications" "$TOKEN"
+# Fetch Meds
+api_call "GET" "/api/patient/$PATIENT_ID/medications" "$DOCTOR_TOKEN" "" "" "List Medications"
 
-# Update Medication
-if [ "$MED_ID" != "null" ]; then
-    api_request "PUT" "/api/medications/$MED_ID" "$TOKEN" "{\"dosage\": \"10ml\"}"
-    # Delete Medication
-    api_request "DELETE" "/api/medications/$MED_ID" "$TOKEN"
-fi
+# Update & Delete
+api_call "PUT" "/api/medications/$MED_ID" "$DOCTOR_TOKEN" "{\"dosage\":\"15mg\"}" "Update Medication"
+api_call "DELETE" "/api/medications/$MED_ID" "$DOCTOR_TOKEN" "" "" "Delete Medication"
+
+# ------------------------------------------------------------------------------
+# PHASE 4: MULTI-USER FLOW (CHAT & LINKING)
+# ------------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Phase 4: Multi-User Flow (Chat & Linking) ---${NC}"
+
+# Register Patient Account
+api_call "POST" "/api/auth/register" "" "{\"name\":\"Exhaustive Patient\",\"email\":\"$PATIENT_EMAIL\",\"password\":\"$PWD\",\"role\":\"patient\",\"doctorCode\":\"$DOCTOR_CODE\"}" "Patient Registration (Linked)"
+PATIENT_TOKEN=$(echo "$LAST_BODY" | jq -r '.token')
+OWN_PT_ID=$(echo "$LAST_BODY" | jq -r '.user._id')
+
+# Link Doctor (Explicitly)
+api_call "POST" "/api/link-doctor" "$PATIENT_TOKEN" "{\"doctorCode\":\"$DOCTOR_CODE\"}" "Link to Doctor"
+
+# Chat: Create Conversation
+api_call "POST" "/api/chat/conversations" "$DOCTOR_TOKEN" "{\"participantId\":\"$OWN_PT_ID\"}" "Create Chat"
+CONV_ID=$(echo "$LAST_BODY" | jq -r '._id')
+
+# Chat: Get Conversations
+api_call "GET" "/api/chat/conversations" "$DOCTOR_TOKEN" "" "" "Doctor Chat List"
+api_call "GET" "/api/chat/conversations" "$PATIENT_TOKEN" "" "" "Patient Chat List"
+
+# Chat: Messages
+api_call "GET" "/api/chat/messages/$CONV_ID" "$DOCTOR_TOKEN" "" "" "Fetch History"
+
+# ------------------------------------------------------------------------------
+# PHASE 5: STATS & HISTORY
+# ------------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Phase 5: Stats & History ---${NC}"
+
+api_call "GET" "/api/doctor/stats" "$DOCTOR_TOKEN" "" "" "Doctor Dashboard Stats"
+api_call "GET" "/api/doctor/history" "$DOCTOR_TOKEN" "" "" "Doctor Analysis History"
 
 echo -e "\n${BLUE}======================================================================${NC}"
-echo -e "${GREEN}  Verbose Test Suite Finished!${NC}"
+echo -e "${GREEN}  Exhaustive Test Suite Finished!${NC}"
 echo -e "${BLUE}======================================================================${NC}"

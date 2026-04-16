@@ -1,0 +1,29 @@
+[0;34m======================================================================[0m
+[0;34m  Starting Exhaustive API Test Suite: https://dermalyze-backend-production.up.railway.app[0m
+[0;34m======================================================================[0m
+
+[0;34m--- Phase 1: Doctor Authentication & Identity ---[0m
+
+[1;33mTEST:[0m  [POST /api/auth/register]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "next is not a function"
+}
+500
+jq: error (at <stdin>:2): Cannot index number with string "token"
+jq: error (at <stdin>:2): Cannot index number with string "user"
+
+[1;33mTEST:[0m  [POST /api/auth/login]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "User not found"
+}
+400
+
+[1;33mTEST:[0m Identity (Me) [GET /api/me]
+[0;31m❌ FAIL (Status: 401)[0m
+{
+  "message": "Invalid or expired token"
+}
+
+[1;33mTEST:[0m Verify Identity [POST /api/auth/verify-identity]
