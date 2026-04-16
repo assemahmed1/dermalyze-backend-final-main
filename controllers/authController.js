@@ -13,8 +13,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Email already in use" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // User.create will now handle password hashing via pre-save hook
 
     let user;
 
@@ -23,7 +22,7 @@ exports.register = async (req, res) => {
       user = await User.create({
         name,
         email,
-        password: hashedPassword,
+        password,
         role: "doctor"
       });
     }
@@ -43,7 +42,7 @@ exports.register = async (req, res) => {
       user = await User.create({
         name,
         email,
-        password: hashedPassword,
+        password,
         role: "patient",
         doctor: doctor._id
       });

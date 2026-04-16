@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 // Generate unique doctor code
 function generateDoctorCode() {
@@ -50,11 +51,22 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Auto-generate doctor code before save
-userSchema.pre("save", function (next) {
+// Unified pre-save hook for password hashing and doctor code generation
+userSchema.pre("save", async function (next) {
+  // 1. Handle Password Hashing
+  if (this.isModified("password")) {
+    try {
+      this.password = await bcrypt.hash(this.password, 10);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  // 2. Handle Doctor Code Generation
   if (this.role === "doctor" && !this.doctorCode) {
     this.doctorCode = generateDoctorCode();
   }
+
   next();
 });
 
