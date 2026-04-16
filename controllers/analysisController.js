@@ -33,10 +33,11 @@ async function analyzeSkin(imageBuffer) {
 
     const hf = new HfInference(token);
     
-    // Use the SDK to perform image classification
-    const data = await hf.imageClassification({
+    // 🚀 Use hf.request for a more direct and reliable connection (bypasses provider mapping)
+    const data = await hf.request({
       model: "Ismail-Amroune/skin-diseases-classification",
-      data: imageBuffer
+      data: imageBuffer,
+      task: "image-classification"
     });
 
     // Handle SDK response (typically an array of {label, score})
