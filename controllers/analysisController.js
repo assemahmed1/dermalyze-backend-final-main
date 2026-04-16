@@ -19,12 +19,23 @@ function uploadToCloudinary(buffer) {
 // Analyze image using Hugging Face AI
 async function analyzeSkin(imageBuffer) {
   try {
+    const token = process.env.HF_API_TOKEN;
+    
+    // 🔍 Diagnostic Check: Verify token exists
+    if (!token) {
+      console.error("CRITICAL: HF_API_TOKEN is missing in environment variables!");
+      return "Analysis error: API configuration missing";
+    }
+    
+    // Log sanitized token for debugging (First 4 chars)
+    console.log(`AI Analysis attempting with token: ${token.substring(0, 4)}****`);
+
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/DunnBC22/vit-base-patch16-224-in21k-skin-diseases",
+      "https://api-inference.huggingface.co/models/vdyas/skin-diseases-classification",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.HF_API_TOKEN}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/octet-stream"
         },
         body: imageBuffer
