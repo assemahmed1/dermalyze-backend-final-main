@@ -1,1 +1,1 @@
-{"message":"User registered successfully","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZTE0NWM1ZDkzMmEyMWY1MjI3YjFmYSIsInJvbGUiOiJkb2N0b3IiLCJpYXQiOjE3NzYzNzExNDEsImV4cCI6MTc3ODk2MzE0MX0.F3_JlEauw4uxJGwFatOvSJiG3Ge49QQ8vn1OIxLVVck","user":{"_id":"69e145c5d932a21f5227b1fa","name":"Absolute Final Doctor","email":"abs_final_test_1776371140@example.com","role":"doctor","doctorCode":"DOC-XFGCUW"}}
+{"message":"next is not a function"}

@@ -24,7 +24,7 @@ const registerRules = [
     .isIn(["doctor", "patient"])
     .withMessage("Role must be doctor or patient"),
   body("doctorCode")
-    .if(body("role").equals("patient"))
+    .if((value, { req }) => req.body.role === "patient")
     .notEmpty()
     .withMessage("Doctor code is required for patient registration")
 ];

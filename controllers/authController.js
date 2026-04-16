@@ -64,6 +64,7 @@ exports.register = async (req, res) => {
     });
 
   } catch (error) {
+    console.error(`[REGISTRATION ERROR] ${error.stack || error.message}`);
     res.status(500).json({ message: error.message });
   }
 };
