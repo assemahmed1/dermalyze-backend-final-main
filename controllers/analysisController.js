@@ -20,7 +20,7 @@ function uploadToCloudinary(buffer) {
 async function analyzeSkin(imageBuffer) {
   try {
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/Anwarkh1/Skin_Disease_Classification",
+      "https://api-inference.huggingface.co/models/dakshtrehan/skin-disease-classifier",
       {
         method: "POST",
         headers: {
