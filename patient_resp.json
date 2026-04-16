@@ -1,1 +1,1 @@
-{"message":"Cannot set property query of #<IncomingMessage> which has only a getter"}
+{"name":"Emily Blunt","age":32,"gender":"female","nationalId":"","phone":"","address":"","medicalHistory":"","diagnosis":"Rosacea","status":"Stable","recoveryProgress":0,"doctor":"69e12f0327e8eef805b8d2dc","_id":"69e12f0327e8eef805b8d2de","images":[],"createdAt":"2026-04-16T18:48:35.789Z","updatedAt":"2026-04-16T18:48:35.789Z","__v":0}

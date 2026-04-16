@@ -1,1 +1,1 @@
-{"message":"Cannot set property query of #<IncomingMessage> which has only a getter"}
+{"message":"Analysis added to patient file","analysis":{"patient":"69e12f0327e8eef805b8d2de","doctor":"69e12f0327e8eef805b8d2dc","imageUrl":"https://res.cloudinary.com/daraqfmov/image/upload/v1776365324/dermalyze/analyses/vmdbesysuewsift9k8nj.jpg","result":"Analysis service unavailable","_id":"69e12f0d27e8eef805b8d2e4","createdAt":"2026-04-16T18:48:45.109Z","updatedAt":"2026-04-16T18:48:45.109Z","__v":0}}

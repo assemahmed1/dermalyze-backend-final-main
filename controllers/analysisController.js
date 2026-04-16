@@ -31,6 +31,17 @@ async function analyzeSkin(imageBuffer) {
       }
     );
 
+    // 🔍 Handle non-OK responses (like 401 Unauthorized or 404)
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Hugging Face API Error (${response.status}):`, errorText.substring(0, 100));
+      
+      if (response.status === 401) {
+        return "Analysis error: Invalid HF_API_TOKEN";
+      }
+      return `Analysis service error (${response.status})`;
+    }
+
     const data = await response.json();
 
     // Handle model loading or error response
@@ -48,7 +59,7 @@ async function analyzeSkin(imageBuffer) {
     return "Unable to analyze image";
 
   } catch (error) {
-    console.error("Hugging Face API error:", error.message);
+    console.error("Hugging Face API connection error:", error.message);
     return "Analysis service unavailable";
   }
 }
