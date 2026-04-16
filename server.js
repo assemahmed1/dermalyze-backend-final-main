@@ -38,6 +38,21 @@ const io = new Server(server, {
 // Initialize Socket Handler
 socketHandler(io);
 
+// 🔍 Fix: Make Request properties writable for legacy middlewares (Express 5 compatibility)
+app.use((req, res, next) => {
+  ["query", "params", "body"].forEach((prop) => {
+    if (req[prop]) {
+      Object.defineProperty(req, prop, {
+        value: { ...req[prop] },
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+    }
+  });
+  next();
+});
+
 // 1) Set security HTTP headers
 app.use(helmet());
 
@@ -55,14 +70,15 @@ app.use(mongoSanitize());
 // 5) Data sanitization against XSS
 app.use(xss());
 
-// 6) Prevent parameter pollution (Modern Node.js 22+ compatible)
+// 6) Prevent parameter pollution (Modern Node.js 22/Express 5 compatible)
 app.use((req, res, next) => {
   if (req.query) {
     const sanitized = {};
-    for (const key of Object.keys(req.query)) {
+    Object.keys(req.query).forEach(key => {
       const val = req.query[key];
       sanitized[key] = Array.isArray(val) ? val[val.length - 1] : val;
-    }
+    });
+    // Now safe because we made req.query writable above
     Object.assign(req.query, sanitized);
   }
   next();
