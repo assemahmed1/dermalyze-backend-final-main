@@ -73,7 +73,7 @@ exports.updateMedication = async (req, res, next) => {
     const medication = await Medication.findOneAndUpdate(
       { _id: id, doctor: req.user.id },
       allowedUpdate,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!medication) {

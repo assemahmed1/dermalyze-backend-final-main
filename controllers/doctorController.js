@@ -13,7 +13,7 @@ exports.linkDoctor = async (req, res, next) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    await User.findByIdAndUpdate(req.user.id, { doctor: doctor._id }, { new: true });
+    await User.findByIdAndUpdate(req.user.id, { doctor: doctor._id }, { returnDocument: "after" });
 
     res.json({ message: "Doctor linked successfully", doctor: doctor.name });
   } catch (error) {

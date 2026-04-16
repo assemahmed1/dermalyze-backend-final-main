@@ -157,7 +157,8 @@ api_call "GET" "/api/chat/messages/$CONV_ID" "$DOCTOR_TOKEN" "" "" "Fetch Histor
 echo -e "\n${BLUE}--- Phase 5: Stats & History ---${NC}"
 
 api_call "GET" "/api/doctor/stats" "$DOCTOR_TOKEN" "" "" "Doctor Dashboard Stats"
-api_call "GET" "/api/doctor/history" "$DOCTOR_TOKEN" "" "" "Doctor Analysis History"
+# Get History (Requires disease query param)
+api_call "GET" "/api/doctor/history?disease=Psoriasis" "$DOCTOR_TOKEN" "" "" "Doctor Analysis History"
 
 echo -e "\n${BLUE}======================================================================${NC}"
 echo -e "${GREEN}  Exhaustive Test Suite Finished!${NC}"

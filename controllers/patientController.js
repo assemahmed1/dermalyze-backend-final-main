@@ -56,7 +56,7 @@ const updatePatientStatus = async (req, res, next) => {
     const patient = await Patient.findOneAndUpdate(
       { _id: req.params.id, doctor: req.user.id },
       { status: status },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!patient) return res.status(404).json({ message: "Patient not found" });
@@ -80,7 +80,7 @@ const updateRecoveryProgress = async (req, res, next) => {
     const patient = await Patient.findOneAndUpdate(
       { _id: req.params.id, doctor: req.user.id },
       { recoveryProgress: progress },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!patient) return res.status(404).json({ message: "Patient not found" });
