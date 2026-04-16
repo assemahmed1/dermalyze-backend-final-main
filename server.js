@@ -40,16 +40,25 @@ socketHandler(io);
 
 // 🔍 Fix: Make Request properties writable for legacy middlewares (Express 5 compatibility)
 app.use((req, res, next) => {
-  ["query", "params", "body"].forEach((prop) => {
-    if (req[prop]) {
-      Object.defineProperty(req, prop, {
-        value: { ...req[prop] },
-        writable: true,
-        configurable: true,
-        enumerable: true,
-      });
+  try {
+    // Specifically target 'query' as it is the primary culprit in Express 5
+    // body and params are typically plain objects and don't need this shim
+    if (req.query && typeof req.query === "object") {
+      const descriptor = Object.getOwnPropertyDescriptor(req, "query");
+      
+      // Only redefine if it's a getter (standard in Express 5) and is configurable
+      if (descriptor && (descriptor.get || !descriptor.writable) && descriptor.configurable) {
+        Object.defineProperty(req, "query", {
+          value: { ...req.query },
+          writable: true,
+          configurable: true,
+          enumerable: true,
+        });
+      }
     }
-  });
+  } catch (e) {
+    console.error("Mutability shim error:", e.message);
+  }
   next();
 });
 
