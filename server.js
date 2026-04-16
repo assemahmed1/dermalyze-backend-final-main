@@ -27,6 +27,21 @@ const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
 
 const app = express();
+
+// 🔍 Aggressive Fix: Make req.query writable (Express 5 compatibility)
+// This MUST be the very first middleware to shadow the inherited read-only getter.
+app.use((req, res, next) => {
+  if (req.query) {
+    Object.defineProperty(req, "query", {
+      value: { ...req.query },
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+  }
+  next();
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -37,30 +52,6 @@ const io = new Server(server, {
 
 // Initialize Socket Handler
 socketHandler(io);
-
-// 🔍 Fix: Make Request properties writable for legacy middlewares (Express 5 compatibility)
-app.use((req, res, next) => {
-  try {
-    // Specifically target 'query' as it is the primary culprit in Express 5
-    // body and params are typically plain objects and don't need this shim
-    if (req.query && typeof req.query === "object") {
-      const descriptor = Object.getOwnPropertyDescriptor(req, "query");
-      
-      // Only redefine if it's a getter (standard in Express 5) and is configurable
-      if (descriptor && (descriptor.get || !descriptor.writable) && descriptor.configurable) {
-        Object.defineProperty(req, "query", {
-          value: { ...req.query },
-          writable: true,
-          configurable: true,
-          enumerable: true,
-        });
-      }
-    }
-  } catch (e) {
-    console.error("Mutability shim error:", e.message);
-  }
-  next();
-});
 
 // 1) Set security HTTP headers
 app.use(helmet());

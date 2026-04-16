@@ -1,1 +1,1 @@
-{"name":"Jane Doe","age":28,"gender":"female","nationalId":"","phone":"","address":"","medicalHistory":"","diagnosis":"Eczema","status":"Stable","recoveryProgress":0,"doctor":"69e128a9244247b61c3527f4","_id":"69e128a9244247b61c3527f6","images":[],"createdAt":"2026-04-16T18:21:29.772Z","updatedAt":"2026-04-16T18:21:29.772Z","__v":0}
+{"message":"Cannot set property query of #<IncomingMessage> which has only a getter"}

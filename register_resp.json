@@ -1,1 +1,1 @@
-{"message":"User registered successfully","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZTEyOGE5MjQ0MjQ3YjYxYzM1MjdmNCIsInJvbGUiOiJkb2N0b3IiLCJpYXQiOjE3NzYzNjM2ODksImV4cCI6MTc3ODk1NTY4OX0.2J9R4WckrCoc8lYrW7ua9l5q6uIgx2Yc9JT8md8iXOc","user":{"_id":"69e128a9244247b61c3527f4","name":"Final Test Doctor","email":"final_test_1776363688@example.com","role":"doctor","doctorCode":"DOC-7982CD"}}
+{"message":"Cannot set property query of #<IncomingMessage> which has only a getter"}
