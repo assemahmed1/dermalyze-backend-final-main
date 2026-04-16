@@ -29,7 +29,7 @@ async function analyzeSkin(imageBuffer) {
     console.log(`AI Analysis (Direct) attempting with token: ${token.substring(0, 4)}****`);
 
     const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/google/vit-base-patch16-224",
+      "https://router.huggingface.co/hf-inference/models/Anwarkh1/Skin_Disease_Classification",
       {
         method: "POST",
         headers: {
