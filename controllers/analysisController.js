@@ -1,4 +1,3 @@
-const { HfInference } = require("@huggingface/inference");
 const Analysis = require("../models/Analysis");
 const Patient = require("../models/Patient");
 const cloudinary = require("../config/cloudinary");
@@ -22,25 +21,38 @@ async function analyzeSkin(imageBuffer) {
   try {
     const token = process.env.HF_API_TOKEN;
     
-    // 🔍 Diagnostic Check: Verify token exists
     if (!token) {
       console.error("CRITICAL: HF_API_TOKEN is missing in environment variables!");
       return "Analysis error: API configuration missing";
     }
     
-    // Log sanitized token for debugging (First 4 chars)
-    console.log(`AI Analysis SDK attempting with token: ${token.substring(0, 4)}****`);
+    console.log(`AI Analysis (Direct) attempting with token: ${token.substring(0, 4)}****`);
 
-    const hf = new HfInference(token);
-    
-    // 🚀 Use hf.request for a more direct and reliable connection (bypasses provider mapping)
-    const data = await hf.request({
-      model: "Ismail-Amroune/skin-diseases-classification",
-      data: imageBuffer,
-      task: "image-classification"
-    });
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/Ismail-Amroune/skin-diseases-classification",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/octet-stream"
+        },
+        body: imageBuffer
+      }
+    );
 
-    // Handle SDK response (typically an array of {label, score})
+    // 🔍 Capture exact status and body for debugging
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Hugging Face Direct API Error (${response.status}):`, errorText.substring(0, 200));
+      
+      if (response.status === 401) return "Analysis error: Invalid API token";
+      if (response.status === 503) return "Analysis error: Model loading, please wait...";
+      return `Analysis error (${response.status})`;
+    }
+
+    const data = await response.json();
+
+    // Get top prediction result
     if (Array.isArray(data) && data.length > 0) {
       const top = data[0];
       const confidence = (top.score * 100).toFixed(1);
@@ -50,16 +62,7 @@ async function analyzeSkin(imageBuffer) {
     return "Unable to analyze image";
 
   } catch (error) {
-    console.error("Hugging Face SDK error:", error.message);
-    
-    // Specific error handling for common issues
-    if (error.message.includes("404")) {
-      return "Analysis error: Model endpoint unavailable (404)";
-    }
-    if (error.message.includes("401")) {
-      return "Analysis error: Invalid API token (401)";
-    }
-    
+    console.error("Analysis connection failure:", error.message);
     return "Analysis service unavailable";
   }
 }
