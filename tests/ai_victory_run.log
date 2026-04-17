@@ -1,0 +1,24 @@
+[0;34m======================================================================[0m
+[0;34m  Starting Exhaustive API Test Suite: https://dermalyze-backend-production.up.railway.app[0m
+[0;34m======================================================================[0m
+
+[0;34m--- Phase 1: Doctor Authentication & Identity ---[0m
+
+[1;33mTEST:[0m  [POST /api/auth/register]
+[0;31m❌ FAIL (Status: 000)[0m
+{
+  "message": "User registered successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZTE3ZWZiOGVjZjMyZjFiNGJmYzMyYiIsInJvbGUiOiJkb2N0b3IiLCJpYXQiOjE3NzYzODU3ODcsImV4cCI6MTc3ODk3Nzc4N30.FTvDIH7gVpyrbjc9zurfwfraYv0LZ9rgU4f1KYZmuHo",
+  "user": {
+    "_id": "69e17efb8ecf32f1b4bfc32b",
+    "name": "Dr. Exhaustive",
+    "email": "dr_exhaustive_1776385786@example.com",
+    "role": "doctor",
+    "doctorCode": "DOC-N41IWO"
+  }
+}
+201
+jq: error (at <stdin>:2): Cannot index number with string "token"
+jq: error (at <stdin>:2): Cannot index number with string "user"
+
+[1;33mTEST:[0m  [POST /api/auth/login]
