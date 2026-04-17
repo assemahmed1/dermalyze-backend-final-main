@@ -85,11 +85,6 @@ connectDB();
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health Check & Documentation Root
-app.get("/", (req, res) => {
-  res.status(200).send("Dermalyze Backend is LIVE ✅. Visit /api-docs for documentation.");
-});
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", verifyRoutes);
@@ -100,6 +95,11 @@ app.use("/api", patientRoutes);
 app.use("/api", medicationRoutes);
 app.use("/api", historyRoutes);
 app.use("/api/chat", chatRoutes);
+
+// Test route
+app.get("/", (req, res) => {
+  res.send("Dermalyze Backend Running ✅");
+});
 
 // 404
 app.use((req, res) => {
