@@ -13,9 +13,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-console.log(`[REMOTE SMTP CHECK] SMTP_HOST is defined: ${!!process.env.SMTP_HOST}`);
-console.log(`[REMOTE SMTP CHECK] SMTP_USER is defined: ${!!process.env.SMTP_USER}`);
-
 /**
  * Helper to send OTP email
  * @param {string} email - Recipient email
