@@ -40,10 +40,13 @@ async function analyzeSkin(imageBuffer) {
       }
     );
 
+    console.log("HF Response status:", response.status);
+    console.log("HF Response headers:", Object.fromEntries(response.headers));
+
     // 🔍 Capture exact status and body for debugging
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Hugging Face Direct API Error (${response.status}):`, errorText.substring(0, 200));
+      console.error(`Hugging Face Full Error:`, errorText);
       
       if (response.status === 401) return "Analysis error: Invalid API token";
       if (response.status === 503) return "Analysis error: Model loading, please wait...";
