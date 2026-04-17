@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-ara \
     tesseract-ocr-eng \
     # Image Dependencies
-    libatlas-base-dev \
+    libopenblas-dev \
     libjpeg-dev \
     libpng-dev \
     libtiff-dev \
