@@ -46,4 +46,32 @@ const patientRules = [
     .withMessage("Gender must be male or female")
 ];
 
-module.exports = { validate, registerRules, loginRules, patientRules };
+// Forgot password rules
+const forgotPasswordRules = [
+  body("email").isEmail().withMessage("Valid email is required")
+];
+
+// Verify OTP rules
+const verifyOTPRules = [
+  body("email").isEmail().withMessage("Valid email is required"),
+  body("code").isLength({ min: 6, max: 6 }).withMessage("OTP must be 6 digits")
+];
+
+// Reset password rules
+const resetPasswordRules = [
+  body("email").isEmail().withMessage("Valid email is required"),
+  body("code").isLength({ min: 6, max: 6 }).withMessage("OTP must be 6 digits"),
+  body("newPassword")
+    .isLength({ min: 6 })
+    .withMessage("New password must be at least 6 characters")
+];
+
+module.exports = {
+  validate,
+  registerRules,
+  loginRules,
+  patientRules,
+  forgotPasswordRules,
+  verifyOTPRules,
+  resetPasswordRules
+};

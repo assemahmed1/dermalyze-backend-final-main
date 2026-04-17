@@ -15,6 +15,7 @@ const medicationRoutes = require("./routes/medicationRoutes");
 const historyRoutes = require("./routes/historyRoutes");
 const verifyRoutes = require("./routes/verifyRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const userRoutes = require("./routes/userRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const { loadModels } = require("./services/faceService");
 const http = require("http");
@@ -88,6 +89,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", verifyRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api", protectedRoutes);
 app.use("/api", doctorRoutes);
 app.use("/api", analysisRoutes);

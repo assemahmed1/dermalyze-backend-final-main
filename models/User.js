@@ -48,6 +48,16 @@ const userSchema = new mongoose.Schema({
   notificationsEnabled: {
     type: Boolean,
     default: true
+  },
+
+  resetPasswordOTP: {
+    type: String,
+    default: null
+  },
+
+  resetPasswordOTPExpires: {
+    type: Date,
+    default: null
   }
 });
 
