@@ -61,7 +61,7 @@ app.use(cors({
 }));
 
 // 3) Body parser, reading data into req.body with size limit (e.g., 10kb)
-app.use(express.json({ limit: "10kb" })); 
+app.use(express.json({ limit: "10kb" }));
 
 // 4) Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
@@ -85,6 +85,11 @@ connectDB();
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Health Check & Documentation Root
+app.get("/", (req, res) => {
+  res.status(200).send("Dermalyze Backend is LIVE ✅. Visit /api-docs for documentation.");
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", verifyRoutes);
@@ -95,11 +100,6 @@ app.use("/api", patientRoutes);
 app.use("/api", medicationRoutes);
 app.use("/api", historyRoutes);
 app.use("/api/chat", chatRoutes);
-
-// Test route
-app.get("/", (req, res) => {
-  res.send("Dermalyze Backend Running ✅");
-});
 
 // 404
 app.use((req, res) => {
