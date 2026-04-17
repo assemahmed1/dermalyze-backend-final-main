@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 
@@ -52,6 +53,10 @@ exports.getOrCreateConversation = async (req, res, next) => {
 
     if (!participantId) {
       return res.status(400).json({ message: "Participant ID is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(participantId)) {
+      return res.status(400).json({ message: "Invalid Participant ID format" });
     }
 
     // Check if conversation already exists between these two

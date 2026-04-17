@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const protect = require("../middlewares/authMiddleware");
+const validateObjectId = require("../middlewares/validateObjectId");
 const {
   getConversations,
   getMessages,
@@ -11,6 +12,6 @@ router.use(protect); // All chat routes require authentication
 
 router.get("/conversations", getConversations);
 router.post("/conversations", getOrCreateConversation);
-router.get("/messages/:conversationId", getMessages);
+router.get("/messages/:conversationId", validateObjectId("conversationId"), getMessages);
 
 module.exports = router;

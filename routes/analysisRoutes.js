@@ -5,6 +5,7 @@ const { createAnalysis, getPatientAnalyses } = require("../controllers/analysisC
 const protect = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
+const validateObjectId = require("../middlewares/validateObjectId");
 
 /**
  * @swagger
@@ -31,7 +32,7 @@ const upload = require("../middlewares/uploadMiddleware");
  *       201:
  *         description: Analysis created successfully
  */
-router.post("/analysis/:patientId", protect, requireRole("doctor"), upload.single("image"), createAnalysis);
+router.post("/analysis/:patientId", protect, requireRole("doctor"), validateObjectId("patientId"), upload.single("image"), createAnalysis);
 
 /**
  * @swagger
@@ -49,6 +50,6 @@ router.post("/analysis/:patientId", protect, requireRole("doctor"), upload.singl
  *       200:
  *         description: List of analyses
  */
-router.get("/patient/:patientId/analyses", protect, requireRole("doctor", "patient"), getPatientAnalyses);
+router.get("/patient/:patientId/analyses", protect, requireRole("doctor", "patient"), validateObjectId("patientId"), getPatientAnalyses);
 
 module.exports = router;

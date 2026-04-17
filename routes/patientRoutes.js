@@ -11,6 +11,7 @@ const {
 
 const protect = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const validateObjectId = require("../middlewares/validateObjectId");
 const { patientRules, validate } = require("../middlewares/validationMiddleware");
 
 /**
@@ -79,7 +80,7 @@ router.get("/patients", protect, requireRole("doctor"), getPatients);
  *       200:
  *         description: Patient data
  */
-router.get("/patients/:id", protect, requireRole("doctor"), getPatientById);
+router.get("/patients/:id", protect, requireRole("doctor"), validateObjectId("id"), getPatientById);
 
 /**
  * @swagger
@@ -106,7 +107,7 @@ router.get("/patients/:id", protect, requireRole("doctor"), getPatientById);
  *       200:
  *         description: Updated successfully
  */
-router.put("/patients/:id/status", protect, requireRole("doctor"), updatePatientStatus);
+router.put("/patients/:id/status", protect, requireRole("doctor"), validateObjectId("id"), updatePatientStatus);
 
 /**
  * @swagger
@@ -133,6 +134,6 @@ router.put("/patients/:id/status", protect, requireRole("doctor"), updatePatient
  *       200:
  *         description: Updated successfully
  */
-router.put("/patients/:id/recovery", protect, requireRole("doctor"), updateRecoveryProgress);
+router.put("/patients/:id/recovery", protect, requireRole("doctor"), validateObjectId("id"), updateRecoveryProgress);
 
 module.exports = router;

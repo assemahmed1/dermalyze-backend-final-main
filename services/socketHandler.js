@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Message = require("../models/Message");
@@ -28,6 +29,10 @@ const socketHandler = (io) => {
     // Join a specific conversation room
     socket.on("join_chat", async (conversationId) => {
       try {
+        if (!conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
+          return socket.emit("error", { message: "Invalid conversion ID format" });
+        }
+
         const conversation = await Conversation.findById(conversationId);
         
         // IDOR Fix: verify user is a participant
@@ -47,6 +52,10 @@ const socketHandler = (io) => {
     socket.on("send_message", async (data) => {
       try {
         const { conversationId, text } = data;
+
+        if (!conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
+          return socket.emit("error", { message: "Invalid conversion ID format" });
+        }
 
         // IDOR Fix: verify user is a participant before allowing message
         const conversation = await Conversation.findById(conversationId);
