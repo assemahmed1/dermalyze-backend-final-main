@@ -21,7 +21,7 @@ async function compareFaces(idImageBuffer, selfieImageBuffer) {
 
         if (error) {
           console.error("Face comparison error:", stderr);
-          return resolve({ match: false, similarity: 0, message: "Face verification service error" });
+          return resolve({ match: false, similarity: 0, message: `Face verification error: ${stderr}` });
         }
 
         try {
