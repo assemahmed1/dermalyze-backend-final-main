@@ -31,6 +31,14 @@ const patientSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+ 
+    reviews: [
+      {
+        text: { type: String, required: true },
+        doctorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

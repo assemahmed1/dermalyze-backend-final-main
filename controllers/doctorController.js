@@ -107,3 +107,55 @@ exports.testNotification = async (req, res, next) => {
     next(error);
   }
 };
+
+// POST /doctor/patients/:patientId/review
+exports.addReview = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    const { review } = req.body;
+
+    const patient = await Patient.findOneAndUpdate(
+      { _id: patientId, doctor: req.user.id },
+      {
+        $push: {
+          reviews: {
+            text: review,
+            doctorId: req.user.id,
+          },
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found or unauthorized access" });
+    }
+
+    res.status(201).json({
+      message: "Review added successfully",
+      reviews: patient.reviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /doctor/patients/:patientId/reviews
+exports.getReviews = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+
+    const patient = await Patient.findOne({ _id: patientId, doctor: req.user.id });
+
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found or unauthorized access" });
+    }
+
+    // Return reviews sorted by createdAt descending
+    const sortedReviews = patient.reviews.sort((a, b) => b.createdAt - a.createdAt);
+
+    res.json(sortedReviews);
+  } catch (error) {
+    next(error);
+  }
+};

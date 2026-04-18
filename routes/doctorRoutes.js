@@ -4,6 +4,8 @@ const router = express.Router();
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
 const doctorController = require("../controllers/doctorController");
+const validateObjectId = require("../middlewares/validateObjectId");
+const { reviewRules, validate } = require("../middlewares/validationMiddleware");
 
 /**
  * @swagger
@@ -98,5 +100,68 @@ router.put("/doctor/notifications/read", auth, requireRole("doctor"), doctorCont
  *         description: Created notification object
  */
 router.post("/doctor/notifications/test", auth, requireRole("doctor"), doctorController.testNotification);
+
+/**
+ * @swagger
+ * /doctor/patients/{patientId}/review:
+ *   post:
+ *     summary: Add a review/note for a patient
+ *     tags: [Doctor]
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - review
+ *             properties:
+ *               review:
+ *                 type: string
+ *                 minLength: 10
+ *                 maxLength: 1000
+ *     responses:
+ *       201:
+ *         description: Review added successfully
+ */
+router.post(
+  "/doctor/patients/:patientId/review",
+  auth,
+  requireRole("doctor"),
+  validateObjectId("patientId"),
+  reviewRules,
+  validate,
+  doctorController.addReview
+);
+
+/**
+ * @swagger
+ * /doctor/patients/{patientId}/reviews:
+ *   get:
+ *     summary: Get all reviews for a patient
+ *     tags: [Doctor]
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of reviews
+ */
+router.get(
+  "/doctor/patients/:patientId/reviews",
+  auth,
+  requireRole("doctor"),
+  validateObjectId("patientId"),
+  doctorController.getReviews
+);
 
 module.exports = router;

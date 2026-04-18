@@ -66,6 +66,16 @@ const resetPasswordRules = [
     .withMessage("New password must be at least 6 characters")
 ];
 
+// Review validation rules
+const reviewRules = [
+  body("review")
+    .trim()
+    .notEmpty()
+    .withMessage("Review text is required")
+    .isLength({ min: 10, max: 1000 })
+    .withMessage("Review must be between 10 and 1000 characters")
+];
+
 module.exports = {
   validate,
   registerRules,
@@ -73,5 +83,6 @@ module.exports = {
   patientRules,
   forgotPasswordRules,
   verifyOTPRules,
-  resetPasswordRules
+  resetPasswordRules,
+  reviewRules
 };
