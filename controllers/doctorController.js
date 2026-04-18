@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Patient = require("../models/Patient");
 const Analysis = require("../models/Analysis");
+const Notification = require("../models/Notification");
 
 // Link patient to doctor
 exports.linkDoctor = async (req, res, next) => {
@@ -67,6 +68,26 @@ exports.getDoctorStats = async (req, res, next) => {
       activeToday: improving,
       infectedPeople: total, // All patients have a skin condition
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /doctor/notifications
+exports.getNotifications = async (req, res, next) => {
+  try {
+    const notifications = await Notification.find({ doctorId: req.user.id }).sort({ createdAt: -1 });
+    res.json(notifications);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /doctor/notifications/read
+exports.markNotificationsRead = async (req, res, next) => {
+  try {
+    await Notification.updateMany({ doctorId: req.user.id, isRead: false }, { isRead: true });
+    res.json({ message: "All notifications marked as read" });
   } catch (error) {
     next(error);
   }
