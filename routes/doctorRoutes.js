@@ -103,6 +103,18 @@ router.post("/doctor/notifications/test", auth, requireRole("doctor"), doctorCon
 
 /**
  * @swagger
+ * /doctor/notifications/test-bulk:
+ *   post:
+ *     summary: Create 5 sample notifications of different types (FOR TESTING ONLY)
+ *     tags: [Doctor Notifications]
+ *     responses:
+ *       201:
+ *         description: 5 sample notifications created
+ */
+router.post("/notifications/test-bulk", doctorController.testBulkNotifications);
+
+/**
+ * @swagger
  * /doctor/patients/{patientId}/review:
  *   post:
  *     summary: Add a review/note for a patient

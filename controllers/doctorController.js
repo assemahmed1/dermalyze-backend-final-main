@@ -109,6 +109,51 @@ exports.testNotification = async (req, res, next) => {
   }
 };
 
+// POST /doctor/notifications/test-bulk (FOR TESTING ONLY)
+exports.testBulkNotifications = async (req, res, next) => {
+  try {
+    const doctorId = req.user.id;
+    const samples = [
+      {
+        title: "New Patient Assigned",
+        body: "A new patient has been assigned to your care. Please check their profile.",
+        type: "new_patient",
+      },
+      {
+        title: "Analysis Completed",
+        body: "The AI analysis for Ahmed's skin scan is ready for your review.",
+        type: "analysis_done",
+      },
+      {
+        title: "Upcoming Appointment",
+        body: "You have a scheduled appointment with Sarah at 10:00 AM tomorrow.",
+        type: "appointment",
+      },
+      {
+        title: "System Update",
+        body: "The clinical resource library has been updated with 12 new medications.",
+        type: "system",
+      },
+      {
+        title: "Emergency Alert",
+        body: "Critical patient status detected. Immediate review required.",
+        type: "system",
+      },
+    ];
+
+    const results = await Promise.all(
+      samples.map((s) => createNotification(doctorId, s))
+    );
+
+    res.status(201).json({
+      message: "5 sample notifications created successfully",
+      notifications: results,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // POST /doctor/patients/:patientId/review
 exports.addReview = async (req, res, next) => {
   try {
