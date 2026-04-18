@@ -21,7 +21,7 @@ exports.updateNotificationPreferences = async (req, res, next) => {
         emailNotifications,
         smsNotifications,
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     res.json({

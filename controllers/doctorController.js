@@ -125,7 +125,7 @@ exports.addReview = async (req, res, next) => {
           },
         },
       },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!patient) {
@@ -207,7 +207,7 @@ exports.updateAppointmentStatus = async (req, res, next) => {
     const appointment = await Appointment.findOneAndUpdate(
       { _id: id, doctorId: req.user.id },
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!appointment) {
