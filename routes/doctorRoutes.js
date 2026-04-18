@@ -111,7 +111,7 @@ router.post("/doctor/notifications/test", auth, requireRole("doctor"), doctorCon
  *       201:
  *         description: 5 sample notifications created
  */
-router.post("/notifications/test-bulk", doctorController.testBulkNotifications);
+router.post("/doctor/notifications/test-bulk", auth, requireRole("doctor"), doctorController.testBulkNotifications);
 
 /**
  * @swagger
