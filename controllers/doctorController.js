@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Patient = require("../models/Patient");
 const Analysis = require("../models/Analysis");
 const Notification = require("../models/Notification");
+const { createNotification } = require("../utils/notificationUtils");
 
 // Link patient to doctor
 exports.linkDoctor = async (req, res, next) => {
@@ -88,6 +89,20 @@ exports.markNotificationsRead = async (req, res, next) => {
   try {
     await Notification.updateMany({ doctorId: req.user.id, isRead: false }, { isRead: true });
     res.json({ message: "All notifications marked as read" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /doctor/notifications/test (FOR TESTING ONLY)
+exports.testNotification = async (req, res, next) => {
+  try {
+    const notification = await createNotification(req.user.id, {
+      title: "Test Notification",
+      body: "This is a sample notification created to verify the system works! ✅",
+      type: "system",
+    });
+    res.status(201).json(notification);
   } catch (error) {
     next(error);
   }

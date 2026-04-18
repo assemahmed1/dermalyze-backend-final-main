@@ -87,4 +87,16 @@ router.get("/doctor/notifications", auth, requireRole("doctor"), doctorControlle
  */
 router.put("/doctor/notifications/read", auth, requireRole("doctor"), doctorController.markNotificationsRead);
 
+/**
+ * @swagger
+ * /doctor/notifications/test:
+ *   post:
+ *     summary: Create a test notification for the logged-in doctor
+ *     tags: [Doctor]
+ *     responses:
+ *       201:
+ *         description: Created notification object
+ */
+router.post("/doctor/notifications/test", auth, requireRole("doctor"), doctorController.testNotification);
+
 module.exports = router;
