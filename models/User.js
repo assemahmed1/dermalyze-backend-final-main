@@ -50,6 +50,15 @@ const userSchema = new mongoose.Schema({
     default: true
   },
 
+  // ✅ Notification Preferences
+  pushNotifications: { type: Boolean, default: true },
+  emailNotifications: { type: Boolean, default: true },
+  smsNotifications: { type: Boolean, default: false },
+
+  // ✅ Two-Factor Authentication
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorSecret: { type: String, default: null },
+
   isOnline: {
     type: Boolean,
     default: false
