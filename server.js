@@ -16,6 +16,7 @@ const historyRoutes = require("./routes/historyRoutes");
 const verifyRoutes = require("./routes/verifyRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const userRoutes = require("./routes/userRoutes");
+const resourceRoutes = require("./routes/resourceRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const { loadModels } = require("./services/faceService");
 const http = require("http");
@@ -97,6 +98,7 @@ app.use("/api", patientRoutes);
 app.use("/api", medicationRoutes);
 app.use("/api", historyRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/resources", resourceRoutes);
 
 // Test route
 app.get("/", (req, res) => {
