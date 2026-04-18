@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Patient = require("../models/Patient");
 const Analysis = require("../models/Analysis");
 const Notification = require("../models/Notification");
+const Appointment = require("../models/Appointment");
 const { createNotification } = require("../utils/notificationUtils");
 
 // Link patient to doctor
@@ -155,6 +156,82 @@ exports.getReviews = async (req, res, next) => {
     const sortedReviews = patient.reviews.sort((a, b) => b.createdAt - a.createdAt);
 
     res.json(sortedReviews);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 🗓️ POST /doctor/patients/:patientId/appointments
+exports.createAppointment = async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    const { patientName, diagnosis, appointmentDate, appointmentTime } = req.body;
+
+    // Verify patient belongs to doctor
+    const patient = await Patient.findOne({ _id: patientId, doctor: req.user.id });
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found or unauthorized access" });
+    }
+
+    const appointment = await Appointment.create({
+      patientId,
+      doctorId: req.user.id,
+      patientName,
+      diagnosis,
+      appointmentDate,
+      appointmentTime,
+    });
+
+    res.status(201).json(appointment);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 🗓️ GET /doctor/appointments
+exports.getAppointments = async (req, res, next) => {
+  try {
+    const appointments = await Appointment.find({ doctorId: req.user.id }).sort({ appointmentDate: 1 });
+    res.json(appointments);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 🗓️ PUT /doctor/appointments/:id/status
+exports.updateAppointmentStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const appointment = await Appointment.findOneAndUpdate(
+      { _id: id, doctorId: req.user.id },
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found or unauthorized access" });
+    }
+
+    res.json(appointment);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 🗓️ DELETE /doctor/appointments/:id
+exports.deleteAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const appointment = await Appointment.findOneAndDelete({ _id: id, doctorId: req.user.id });
+
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found or unauthorized access" });
+    }
+
+    res.json({ message: "Appointment cancelled successfully" });
   } catch (error) {
     next(error);
   }

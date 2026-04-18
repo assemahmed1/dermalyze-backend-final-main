@@ -5,7 +5,7 @@ const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
 const doctorController = require("../controllers/doctorController");
 const validateObjectId = require("../middlewares/validateObjectId");
-const { reviewRules, validate } = require("../middlewares/validationMiddleware");
+const { reviewRules, appointmentRules, appointmentStatusRules, validate } = require("../middlewares/validationMiddleware");
 
 /**
  * @swagger
@@ -162,6 +162,115 @@ router.get(
   requireRole("doctor"),
   validateObjectId("patientId"),
   doctorController.getReviews
+);
+
+/**
+ * @swagger
+ * /doctor/patients/{patientId}/appointments:
+ *   post:
+ *     summary: Create new appointment for a patient
+ *     tags: [Doctor]
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [patientName, diagnosis, appointmentDate, appointmentTime]
+ *             properties:
+ *               patientName: { type: string }
+ *               diagnosis: { type: string }
+ *               appointmentDate: { type: string, format: date }
+ *               appointmentTime: { type: string, example: "14:30" }
+ *     responses:
+ *       201:
+ *         description: Appointment created
+ */
+router.post(
+  "/doctor/patients/:patientId/appointments",
+  auth,
+  requireRole("doctor"),
+  validateObjectId("patientId"),
+  appointmentRules,
+  validate,
+  doctorController.createAppointment
+);
+
+/**
+ * @swagger
+ * /doctor/appointments:
+ *   get:
+ *     summary: List all doctor's appointments
+ *     tags: [Doctor]
+ *     responses:
+ *       200:
+ *         description: Array of appointments sorted by date
+ */
+router.get("/doctor/appointments", auth, requireRole("doctor"), doctorController.getAppointments);
+
+/**
+ * @swagger
+ * /doctor/appointments/{id}/status:
+ *   put:
+ *     summary: Update appointment status
+ *     tags: [Doctor]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string, enum: [scheduled, completed, cancelled] }
+ *     responses:
+ *       200:
+ *         description: Status updated
+ */
+router.put(
+  "/doctor/appointments/:id/status",
+  auth,
+  requireRole("doctor"),
+  validateObjectId("id"),
+  appointmentStatusRules,
+  validate,
+  doctorController.updateAppointmentStatus
+);
+
+/**
+ * @swagger
+ * /doctor/appointments/{id}:
+ *   delete:
+ *     summary: Cancel/Delete appointment
+ *     tags: [Doctor]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Appointment cancelled
+ */
+router.delete(
+  "/doctor/appointments/:id",
+  auth,
+  requireRole("doctor"),
+  validateObjectId("id"),
+  doctorController.deleteAppointment
 );
 
 module.exports = router;

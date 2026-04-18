@@ -76,6 +76,23 @@ const reviewRules = [
     .withMessage("Review must be between 10 and 1000 characters")
 ];
 
+// Appointment creation validation rules
+const appointmentRules = [
+  body("patientName").trim().notEmpty().withMessage("Patient name is required"),
+  body("diagnosis").trim().notEmpty().withMessage("Diagnosis is required"),
+  body("appointmentDate").isISO8601().withMessage("Valid appointment date is required"),
+  body("appointmentTime")
+    .matches(/^([01]\d|2[0-3]):?([0-5]\d)$/)
+    .withMessage("Valid appointment time is required (HH:MM)")
+];
+
+// Appointment status update validation rules
+const appointmentStatusRules = [
+  body("status")
+    .isIn(["scheduled", "completed", "cancelled"])
+    .withMessage("Status must be scheduled, completed, or cancelled")
+];
+
 module.exports = {
   validate,
   registerRules,
@@ -84,5 +101,7 @@ module.exports = {
   forgotPasswordRules,
   verifyOTPRules,
   resetPasswordRules,
-  reviewRules
+  reviewRules,
+  appointmentRules,
+  appointmentStatusRules
 };
