@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema({
     default: true
   },
 
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
+
   resetPasswordOTP: {
     type: String,
     default: null
