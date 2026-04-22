@@ -42,8 +42,8 @@ router.get("/medicines/search", auth, requireRole("doctor"), async (req, res) =>
 
     const results = data
       .filter(row =>
-        row[1]?.toLowerCase().includes(query) ||
-        row[2]?.toLowerCase().includes(query)
+  row[1]?.toLowerCase() === query ||
+  row[2]?.toLowerCase() === query
       )
       .slice(0, 20)
       .map(row => ({
