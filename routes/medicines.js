@@ -83,7 +83,7 @@ router.get("/medicines/match", auth, requireRole("doctor"), async (req, res) => 
     const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "skin_medicines_with_category!A:F",
+      range: "final_without_dosage!A:F",
     });
 
     const rows = response.data.values || [];
