@@ -84,6 +84,10 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api", medicinesRouter);
 
+app.get('/api/resources/medications', (req, res) => {
+  res.redirect(307, '/api/medicines/all');
+});
+
 app.get("/", (req, res) => {
   res.send("Dermalyze Backend Running ✅");
 });
