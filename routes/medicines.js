@@ -23,7 +23,7 @@ const getAuthClient = () =>
  *         schema:
  *           type: string
  */
-router.get("/medicines/search", auth, requireRole("doctor"), async (req, res) => {
+router.get("/medicines/search", async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.trim().length < 2) {
@@ -47,11 +47,11 @@ router.get("/medicines/search", auth, requireRole("doctor"), async (req, res) =>
       )
       .slice(0, 20)
       .map((row) => ({
-        diseaseName: row[0],
-        medName: row[1],
-        genericName: row[2],
+        name: row[1] || "N/A",
+        genericName: row[2] || "N/A",
+        category: row[5] || "Other",
+        diseaseName: row[0] || "N/A",
         prescriptionRequired: row[4] === "Required",
-        category: row[5],
       }));
 
     res.json({ success: true, total: results.length, results });
@@ -73,7 +73,7 @@ router.get("/medicines/search", auth, requireRole("doctor"), async (req, res) =>
  *         schema:
  *           type: string
  */
-router.get("/medicines/match", auth, requireRole("doctor"), async (req, res) => {
+router.get("/medicines/match", async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -96,11 +96,11 @@ router.get("/medicines/match", auth, requireRole("doctor"), async (req, res) => 
         row[2]?.toLowerCase() === query
       )
       .map((row) => ({
-        diseaseName: row[0],
-        medName: row[1],
-        genericName: row[2],
+        name: row[1] || "N/A",
+        genericName: row[2] || "N/A",
+        category: row[5] || "Other",
+        diseaseName: row[0] || "N/A",
         prescriptionRequired: row[4] === "Required",
-        category: row[5],
       }));
 
     res.json({ success: true, total: results.length, results });
@@ -116,7 +116,7 @@ router.get("/medicines/match", auth, requireRole("doctor"), async (req, res) => 
  *     summary: Get all medicines from the guide
  *     tags: [Medicines]
  */
-router.get("/medicines/all", auth, requireRole("doctor"), async (req, res) => {
+router.get("/medicines/all", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -132,11 +132,11 @@ router.get("/medicines/all", auth, requireRole("doctor"), async (req, res) => {
     const data = rows.slice(1);
 
     const allMedications = data.map((row) => ({
-      diseaseName: row[0] || "N/A",
-      medName: row[1] || "N/A",
+      name: row[1] || "N/A",
       genericName: row[2] || "N/A",
-      prescriptionRequired: row[4] === "Required",
       category: row[5] || "Other",
+      diseaseName: row[0] || "N/A",
+      prescriptionRequired: row[4] === "Required",
     }));
 
     const paginatedData = allMedications.slice(startIndex, startIndex + limit);
