@@ -118,6 +118,10 @@ router.get("/medicines/match", auth, requireRole("doctor"), async (req, res) => 
  */
 router.get("/medicines/all", auth, requireRole("doctor"), async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const startIndex = (page - 1) * limit;
+
     const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
@@ -127,7 +131,7 @@ router.get("/medicines/all", auth, requireRole("doctor"), async (req, res) => {
     const rows = response.data.values || [];
     const data = rows.slice(1);
 
-    const results = data.map((row) => ({
+    const allMedications = data.map((row) => ({
       diseaseName: row[0] || "N/A",
       medName: row[1] || "N/A",
       genericName: row[2] || "N/A",
@@ -135,7 +139,16 @@ router.get("/medicines/all", auth, requireRole("doctor"), async (req, res) => {
       category: row[5] || "Other",
     }));
 
-    res.json(results);
+    const paginatedData = allMedications.slice(startIndex, startIndex + limit);
+
+    res.json({
+      success: true,
+      total: allMedications.length,
+      page,
+      limit,
+      totalPages: Math.ceil(allMedications.length / limit),
+      data: paginatedData,
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
