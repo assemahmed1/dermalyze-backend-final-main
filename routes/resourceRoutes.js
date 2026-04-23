@@ -25,7 +25,7 @@ const resourceController = require("../controllers/resourceController");
  *       200:
  *         description: Array of medication resource objects
  */
-router.get("/medications", resourceController.getMedications);
+// router.get("/medications", resourceController.getMedications);
 
 /**
  * @swagger
