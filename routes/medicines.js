@@ -33,7 +33,7 @@ router.get("/medicines/search", async (req, res) => {
     const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "medicines_clean!A:C",
+      range: "medicines!A:C"
     });
 
     const rows = response.data.values.slice(1); // skip header
