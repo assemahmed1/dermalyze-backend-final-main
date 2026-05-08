@@ -33,25 +33,22 @@ router.get("/medicines/search", async (req, res) => {
     const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "final_without_dosage!A:F",
+      range: "medicines_clean!A:C",
     });
 
-    const rows = response.data.values || [];
-    const data = rows.slice(1);
+    const rows = response.data.values.slice(1); // skip header
     const query = q.toLowerCase();
 
-    const results = data
+    const results = rows
       .filter((row) =>
-        row[1]?.toLowerCase().includes(query) ||
-        row[2]?.toLowerCase().includes(query)
+        row[0]?.toLowerCase().includes(query) ||
+        row[1]?.toLowerCase().includes(query)
       )
       .slice(0, 20)
       .map((row) => ({
-        name: row[1] || "N/A",
-        genericName: row[2] || "N/A",
-        category: row[5] || "Other",
-        diseaseName: row[0] || "N/A",
-        prescriptionRequired: row[4] === "Required",
+        name: row[0] || "N/A",
+        activeIngredient: row[1] || "N/A",
+        category: row[2] || "N/A",
       }));
 
     res.json({ success: true, total: results.length, results });
@@ -83,24 +80,21 @@ router.get("/medicines/match", async (req, res) => {
     const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "final_without_dosage!A:F",
+      range: "medicines_clean!A:C",
     });
 
-    const rows = response.data.values || [];
-    const data = rows.slice(1);
+    const rows = response.data.values.slice(1); // skip header
     const query = q.toLowerCase().trim();
 
-    const results = data
+    const results = rows
       .filter((row) =>
-        row[1]?.toLowerCase() === query ||
-        row[2]?.toLowerCase() === query
+        row[0]?.toLowerCase() === query ||
+        row[1]?.toLowerCase() === query
       )
       .map((row) => ({
-        name: row[1] || "N/A",
-        genericName: row[2] || "N/A",
-        category: row[5] || "Other",
-        diseaseName: row[0] || "N/A",
-        prescriptionRequired: row[4] === "Required",
+        name: row[0] || "N/A",
+        activeIngredient: row[1] || "N/A",
+        category: row[2] || "N/A",
       }));
 
     res.json({ success: true, total: results.length, results });
@@ -125,18 +119,15 @@ router.get("/medicines/all", async (req, res) => {
     const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "final_without_dosage!A:F",
+      range: "medicines_clean!A:C",
     });
 
-    const rows = response.data.values || [];
-    const data = rows.slice(1);
+    const rows = response.data.values.slice(1); // skip header
 
-    const allMedications = data.map((row) => ({
-      name: row[1] || "N/A",
-      genericName: row[2] || "N/A",
-      category: row[5] || "Other",
-      diseaseName: row[0] || "N/A",
-      prescriptionRequired: row[4] === "Required",
+    const allMedications = rows.map((row) => ({
+      name: row[0] || "N/A",
+      activeIngredient: row[1] || "N/A",
+      category: row[2] || "N/A",
     }));
 
     const paginatedData = allMedications.slice(startIndex, startIndex + limit);
