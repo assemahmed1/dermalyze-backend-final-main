@@ -22,6 +22,7 @@ const resourceRoutes = require("./routes/resourceRoutes");
 const medicinesRouter = require("./routes/medicines");
 const aiRoutes = require("./routes/aiRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const smartHistoryRoutes = require("./routes/smartHistory");
 const errorHandler = require("./middlewares/errorHandler");
 const { loadModels } = require("./services/faceService");
 const http = require("http");
@@ -93,6 +94,7 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api", medicinesRouter);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/smart-history", smartHistoryRoutes);
 
 app.get('/api/resources/medications', (req, res) => {
   res.redirect(307, '/api/medicines/all');
