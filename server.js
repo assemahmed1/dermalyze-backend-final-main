@@ -16,6 +16,7 @@ const chatRoutes = require("./routes/chatRoutes");
 const userRoutes = require("./routes/userRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
 const medicinesRouter = require("./routes/medicines");
+const aiRoutes = require("./routes/aiRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const { loadModels } = require("./services/faceService");
 const http = require("http");
@@ -83,6 +84,7 @@ app.use("/api", historyRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api", medicinesRouter);
+app.use("/api/ai", aiRoutes);
 
 app.get('/api/resources/medications', (req, res) => {
   res.redirect(307, '/api/medicines/all');
