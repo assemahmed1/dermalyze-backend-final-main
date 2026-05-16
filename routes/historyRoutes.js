@@ -3,6 +3,7 @@ const router = express.Router();
 
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const requireVerifiedDoctor = require("../middlewares/verificationMiddleware");
 const { getSmartHistory } = require("../controllers/historyController");
 
 /**
@@ -22,6 +23,6 @@ const { getSmartHistory } = require("../controllers/historyController");
  *       200:
  *         description: Best performing drugs and patient outcomes
  */
-router.get("/doctor/history", auth, requireRole("doctor"), getSmartHistory);
+router.get("/doctor/history", auth, requireRole("doctor"), requireVerifiedDoctor, getSmartHistory);
 
 module.exports = router;

@@ -1,6 +1,22 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../utils/generateToken");
+const cloudinary = require("../config/cloudinary");
+const { sendAdminNewDoctorAlert } = require("../services/emailService");
+
+// Upload image buffer to Cloudinary
+function uploadToCloudinary(buffer, folder) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, transformation: [{ width: 1024, height: 1024, crop: "limit" }] },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+}
 
 // ================= REGISTER =================
 exports.register = async (req, res) => {
@@ -19,12 +35,33 @@ exports.register = async (req, res) => {
 
     // 👨‍⚕️ Doctor
     if (role === "doctor") {
+      // Validate ID card image is provided
+      if (!req.file) {
+        return res.status(400).json({ message: "ID card image is required for doctor registration" });
+      }
+
+      // Upload ID card to Cloudinary
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        "dermalyze/doctor-ids"
+      );
+
       user = await User.create({
         name,
         email,
         password,
-        role: "doctor"
+        role: "doctor",
+        idCardImage: uploadResult.secure_url,
+        verificationStatus: "pending"
       });
+
+      // Notify admin of new doctor registration (fire & forget)
+      const adminEmail = process.env.ADMIN_EMAIL;
+      if (adminEmail) {
+        sendAdminNewDoctorAlert(adminEmail, name, uploadResult.secure_url).catch((err) => {
+          console.error(`[ADMIN EMAIL ERROR] ${err.message}`);
+        });
+      }
     }
 
     // 👤 Patient
@@ -51,14 +88,17 @@ exports.register = async (req, res) => {
     const token = generateToken(user._id, user.role);
 
     res.status(201).json({
-      message: "User registered successfully",
+      message: role === "doctor"
+        ? "Doctor registered successfully. Your account is pending admin verification."
+        : "User registered successfully",
       token,
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        doctorCode: user.doctorCode || null
+        doctorCode: user.doctorCode || null,
+        verificationStatus: user.verificationStatus
       }
     });
 

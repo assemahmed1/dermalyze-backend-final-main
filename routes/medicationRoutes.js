@@ -3,6 +3,7 @@ const router = express.Router();
 
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const requireVerifiedDoctor = require("../middlewares/verificationMiddleware");
 const {
   addMedication,
   getPatientMedications,
@@ -40,7 +41,7 @@ const {
  *               notes:
  *                 type: string
  */
-router.post("/patient/:patientId/medications", auth, requireRole("doctor"), addMedication);
+router.post("/patient/:patientId/medications", auth, requireRole("doctor"), requireVerifiedDoctor, addMedication);
 
 /**
  * @swagger
@@ -55,7 +56,7 @@ router.post("/patient/:patientId/medications", auth, requireRole("doctor"), addM
  *         schema:
  *           type: string
  */
-router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patient"), getPatientMedications);
+router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patient"), requireVerifiedDoctor, getPatientMedications);
 
 /**
  * @swagger
@@ -70,7 +71,7 @@ router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patie
  *         schema:
  *           type: string
  */
-router.put("/medications/:id", auth, requireRole("doctor"), updateMedication);
+router.put("/medications/:id", auth, requireRole("doctor"), requireVerifiedDoctor, updateMedication);
 
 /**
  * @swagger
@@ -85,6 +86,6 @@ router.put("/medications/:id", auth, requireRole("doctor"), updateMedication);
  *         schema:
  *           type: string
  */
-router.delete("/medications/:id", auth, requireRole("doctor"), deleteMedication);
+router.delete("/medications/:id", auth, requireRole("doctor"), requireVerifiedDoctor, deleteMedication);
 
 module.exports = router;

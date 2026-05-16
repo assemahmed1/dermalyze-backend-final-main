@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["doctor", "patient"],
+    enum: ["doctor", "patient", "admin"],
     default: "patient"
   },
 
@@ -72,6 +72,23 @@ const userSchema = new mongoose.Schema({
   resetPasswordOTPExpires: {
     type: Date,
     default: null
+  },
+
+  // ✅ Doctor ID Card Verification
+  idCardImage: {
+    type: String,
+    default: null
+  },
+
+  verificationStatus: {
+    type: String,
+    enum: ["pending", "verified", "rejected"],
+    default: "pending"
+  },
+
+  verificationNote: {
+    type: String,
+    default: null
   }
 });
 
@@ -89,6 +106,15 @@ userSchema.pre("save", async function () {
   // 2. Handle Doctor Code Generation
   if (this.role === "doctor" && !this.doctorCode) {
     this.doctorCode = generateDoctorCode();
+  }
+
+  // 3. Auto-set verificationStatus based on role
+  if (this.isNew) {
+    if (this.role === "doctor") {
+      this.verificationStatus = this.verificationStatus || "pending";
+    } else {
+      this.verificationStatus = "verified";
+    }
   }
 });
 

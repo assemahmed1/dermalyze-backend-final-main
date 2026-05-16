@@ -4,6 +4,7 @@ const router = express.Router();
 const { createAnalysis, getPatientAnalyses } = require("../controllers/analysisController");
 const protect = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const requireVerifiedDoctor = require("../middlewares/verificationMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
 const validateObjectId = require("../middlewares/validateObjectId");
 
@@ -32,7 +33,7 @@ const validateObjectId = require("../middlewares/validateObjectId");
  *       201:
  *         description: Analysis created successfully
  */
-router.post("/analysis/:patientId", protect, requireRole("doctor"), validateObjectId("patientId"), upload.single("image"), createAnalysis);
+router.post("/analysis/:patientId", protect, requireRole("doctor"), requireVerifiedDoctor, validateObjectId("patientId"), upload.single("image"), createAnalysis);
 
 /**
  * @swagger
@@ -50,6 +51,6 @@ router.post("/analysis/:patientId", protect, requireRole("doctor"), validateObje
  *       200:
  *         description: List of analyses
  */
-router.get("/patient/:patientId/analyses", protect, requireRole("doctor", "patient"), validateObjectId("patientId"), getPatientAnalyses);
+router.get("/patient/:patientId/analyses", protect, requireRole("doctor", "patient"), requireVerifiedDoctor, validateObjectId("patientId"), getPatientAnalyses);
 
 module.exports = router;

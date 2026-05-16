@@ -3,6 +3,7 @@ const router = express.Router();
 
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const requireVerifiedDoctor = require("../middlewares/verificationMiddleware");
 const doctorController = require("../controllers/doctorController");
 const validateObjectId = require("../middlewares/validateObjectId");
 const { reviewRules, appointmentRules, appointmentStatusRules, validate } = require("../middlewares/validationMiddleware");
@@ -23,7 +24,7 @@ router.post("/link-doctor", auth, requireRole("patient"), doctorController.linkD
  *     summary: Get all patients of the doctor
  *     tags: [Doctor]
  */
-router.get("/doctor/patients", auth, requireRole("doctor"), doctorController.getPatients);
+router.get("/doctor/patients", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.getPatients);
 
 /**
  * @swagger
@@ -38,7 +39,7 @@ router.get("/doctor/patients", auth, requireRole("doctor"), doctorController.get
  *         schema:
  *           type: string
  */
-router.get("/doctor/patient/:id/analyses", auth, requireRole("doctor"), doctorController.getPatientAnalyses);
+router.get("/doctor/patient/:id/analyses", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.getPatientAnalyses);
 
 /**
  * @swagger
@@ -50,7 +51,7 @@ router.get("/doctor/patient/:id/analyses", auth, requireRole("doctor"), doctorCo
  *       200:
  *         description: Total patients, critical cases, active today
  */
-router.get("/doctor/stats", auth, requireRole("doctor"), doctorController.getDoctorStats);
+router.get("/doctor/stats", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.getDoctorStats);
 
 /**
  * @swagger
@@ -75,7 +76,7 @@ router.get("/doctor/stats", auth, requireRole("doctor"), doctorController.getDoc
  *                   isRead: { type: boolean }
  *                   createdAt: { type: string, format: date-time }
  */
-router.get("/doctor/notifications", auth, requireRole("doctor"), doctorController.getNotifications);
+router.get("/doctor/notifications", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.getNotifications);
 
 /**
  * @swagger
@@ -87,7 +88,7 @@ router.get("/doctor/notifications", auth, requireRole("doctor"), doctorControlle
  *       200:
  *         description: Success message
  */
-router.put("/doctor/notifications/read", auth, requireRole("doctor"), doctorController.markNotificationsRead);
+router.put("/doctor/notifications/read", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.markNotificationsRead);
 
 /**
  * @swagger
@@ -99,7 +100,7 @@ router.put("/doctor/notifications/read", auth, requireRole("doctor"), doctorCont
  *       201:
  *         description: Created notification object
  */
-router.post("/doctor/notifications/test", auth, requireRole("doctor"), doctorController.testNotification);
+router.post("/doctor/notifications/test", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.testNotification);
 
 /**
  * @swagger
@@ -111,7 +112,7 @@ router.post("/doctor/notifications/test", auth, requireRole("doctor"), doctorCon
  *       201:
  *         description: 5 sample notifications created
  */
-router.post("/doctor/notifications/test-bulk", auth, requireRole("doctor"), doctorController.testBulkNotifications);
+router.post("/doctor/notifications/test-bulk", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.testBulkNotifications);
 
 /**
  * @swagger
@@ -146,6 +147,7 @@ router.post(
   "/doctor/patients/:patientId/review",
   auth,
   requireRole("doctor"),
+  requireVerifiedDoctor,
   validateObjectId("patientId"),
   reviewRules,
   validate,
@@ -172,6 +174,7 @@ router.get(
   "/doctor/patients/:patientId/reviews",
   auth,
   requireRole("doctor"),
+  requireVerifiedDoctor,
   validateObjectId("patientId"),
   doctorController.getReviews
 );
@@ -208,6 +211,7 @@ router.post(
   "/doctor/patients/:patientId/appointments",
   auth,
   requireRole("doctor"),
+  requireVerifiedDoctor,
   validateObjectId("patientId"),
   appointmentRules,
   validate,
@@ -224,7 +228,7 @@ router.post(
  *       200:
  *         description: Array of appointments sorted by date
  */
-router.get("/doctor/appointments", auth, requireRole("doctor"), doctorController.getAppointments);
+router.get("/doctor/appointments", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.getAppointments);
 
 /**
  * @swagger
@@ -255,6 +259,7 @@ router.put(
   "/doctor/appointments/:id/status",
   auth,
   requireRole("doctor"),
+  requireVerifiedDoctor,
   validateObjectId("id"),
   appointmentStatusRules,
   validate,
@@ -281,6 +286,7 @@ router.delete(
   "/doctor/appointments/:id",
   auth,
   requireRole("doctor"),
+  requireVerifiedDoctor,
   validateObjectId("id"),
   doctorController.deleteAppointment
 );

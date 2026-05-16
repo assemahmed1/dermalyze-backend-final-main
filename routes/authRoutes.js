@@ -2,18 +2,19 @@ const express = require("express");
 const router = express.Router();
 const { register, login } = require("../controllers/authController");
 const { registerRules, loginRules, validate } = require("../middlewares/validationMiddleware");
+const upload = require("../middlewares/uploadMiddleware");
 
 /**
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register new user
+ *     summary: Register new user (doctors must upload ID card image)
  *     tags: [Auth]
  *     security: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required: [name, email, password]
@@ -35,13 +36,17 @@ const { registerRules, loginRules, validate } = require("../middlewares/validati
  *                 type: string
  *                 description: "Required if role is patient. Get this code from your doctor."
  *                 example: DOC-ABC123
+ *               idCardImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Required if role is doctor. Photo of official medical ID card."
  *     responses:
  *       201:
  *         description: Registered successfully
  *       400:
  *         description: Invalid data or missing/wrong doctor code
  */
-router.post("/register", registerRules, validate, register);
+router.post("/register", upload.single("idCardImage"), registerRules, validate, register);
 
 /**
  * @swagger
