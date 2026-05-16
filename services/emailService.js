@@ -46,9 +46,11 @@ exports.sendOTPEmail = async (email, otp) => {
  * Notify admin that a new doctor has registered and needs ID verification
  * @param {string} adminEmail - Admin email address
  * @param {string} doctorName - Name of the registered doctor
- * @param {string} idCardImageUrl - Cloudinary URL of the ID card image
+ * @param {string} idCardFrontUrl - Cloudinary URL of the ID card front
+ * @param {string} idCardBackUrl - Cloudinary URL of the ID card back
+ * @param {string} selfieUrl - Cloudinary URL of the doctor's selfie
  */
-exports.sendAdminNewDoctorAlert = async (adminEmail, doctorName, idCardImageUrl) => {
+exports.sendAdminNewDoctorAlert = async (adminEmail, doctorName, idCardFrontUrl, idCardBackUrl, selfieUrl) => {
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const fromEmail = process.env.RESEND_FROM_EMAIL || "Dermalyze <onboarding@resend.dev>";
@@ -64,9 +66,20 @@ exports.sendAdminNewDoctorAlert = async (adminEmail, doctorName, idCardImageUrl)
           <div style="background: #f4f7f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p style="font-size: 16px; margin: 5px 0;"><strong>Name:</strong> ${doctorName}</p>
           </div>
-          <p style="font-size: 16px; color: #34495e;">Please review their medical ID card:</p>
-          <div style="text-align: center; margin: 20px 0;">
-            <img src="${idCardImageUrl}" alt="Doctor ID Card" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;" />
+          <p style="font-size: 16px; color: #34495e;">Please review the submitted documents:</p>
+          <div style="margin: 20px 0;">
+            <p style="font-size: 14px; font-weight: bold; color: #2c3e50;">📄 ID Card - Front</p>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <img src="${idCardFrontUrl}" alt="ID Card Front" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;" />
+            </div>
+            <p style="font-size: 14px; font-weight: bold; color: #2c3e50;">📄 ID Card - Back</p>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <img src="${idCardBackUrl}" alt="ID Card Back" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;" />
+            </div>
+            <p style="font-size: 14px; font-weight: bold; color: #2c3e50;">🤳 Selfie</p>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <img src="${selfieUrl}" alt="Doctor Selfie" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;" />
+            </div>
           </div>
           <p style="font-size: 14px; color: #7f8c8d;">Log in to the admin panel to approve or reject this doctor.</p>
           <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;" />

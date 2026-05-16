@@ -75,7 +75,17 @@ const userSchema = new mongoose.Schema({
   },
 
   // ✅ Doctor ID Card Verification
-  idCardImage: {
+  idCardFront: {
+    type: String,
+    default: null
+  },
+
+  idCardBack: {
+    type: String,
+    default: null
+  },
+
+  selfie: {
     type: String,
     default: null
   },

@@ -8,7 +8,7 @@ const upload = require("../middlewares/uploadMiddleware");
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register new user (doctors must upload ID card image)
+ *     summary: Register new user (doctors must upload ID card front, back, and selfie)
  *     tags: [Auth]
  *     security: []
  *     requestBody:
@@ -36,17 +36,29 @@ const upload = require("../middlewares/uploadMiddleware");
  *                 type: string
  *                 description: "Required if role is patient. Get this code from your doctor."
  *                 example: DOC-ABC123
- *               idCardImage:
+ *               idCardFront:
  *                 type: string
  *                 format: binary
- *                 description: "Required if role is doctor. Photo of official medical ID card."
+ *                 description: "Required if role is doctor. Front of official medical ID card."
+ *               idCardBack:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Required if role is doctor. Back of official medical ID card."
+ *               selfie:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Required if role is doctor. Selfie photo of the doctor."
  *     responses:
  *       201:
  *         description: Registered successfully
  *       400:
  *         description: Invalid data or missing/wrong doctor code
  */
-router.post("/register", upload.single("idCardImage"), registerRules, validate, register);
+router.post("/register", upload.fields([
+  { name: "idCardFront", maxCount: 1 },
+  { name: "idCardBack", maxCount: 1 },
+  { name: "selfie", maxCount: 1 }
+]), registerRules, validate, register);
 
 /**
  * @swagger

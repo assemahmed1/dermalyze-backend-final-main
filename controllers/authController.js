@@ -35,30 +35,34 @@ exports.register = async (req, res) => {
 
     // 👨‍⚕️ Doctor
     if (role === "doctor") {
-      // Validate ID card image is provided
-      if (!req.file) {
-        return res.status(400).json({ message: "ID card image is required for doctor registration" });
+      // Validate all 3 images are provided
+      const files = req.files || {};
+      if (!files.idCardFront || !files.idCardBack || !files.selfie) {
+        return res.status(400).json({ message: "ID card front, back, and selfie are all required for doctor registration" });
       }
 
-      // Upload ID card to Cloudinary
-      const uploadResult = await uploadToCloudinary(
-        req.file.buffer,
-        "dermalyze/doctor-ids"
-      );
+      // Upload all 3 images to Cloudinary simultaneously
+      const [frontResult, backResult, selfieResult] = await Promise.all([
+        uploadToCloudinary(files.idCardFront[0].buffer, "dermalyze/doctor-ids"),
+        uploadToCloudinary(files.idCardBack[0].buffer, "dermalyze/doctor-ids"),
+        uploadToCloudinary(files.selfie[0].buffer, "dermalyze/doctor-ids"),
+      ]);
 
       user = await User.create({
         name,
         email,
         password,
         role: "doctor",
-        idCardImage: uploadResult.secure_url,
+        idCardFront: frontResult.secure_url,
+        idCardBack: backResult.secure_url,
+        selfie: selfieResult.secure_url,
         verificationStatus: "pending"
       });
 
       // Notify admin of new doctor registration (fire & forget)
       const adminEmail = process.env.ADMIN_EMAIL;
       if (adminEmail) {
-        sendAdminNewDoctorAlert(adminEmail, name, uploadResult.secure_url).catch((err) => {
+        sendAdminNewDoctorAlert(adminEmail, name, frontResult.secure_url, backResult.secure_url, selfieResult.secure_url).catch((err) => {
           console.error(`[ADMIN EMAIL ERROR] ${err.message}`);
         });
       }

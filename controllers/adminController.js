@@ -64,7 +64,7 @@ exports.getPendingDoctors = async (req, res) => {
     const doctors = await User.find({
       role: "doctor",
       verificationStatus: "pending"
-    }).select("name email idCardImage verificationStatus createdAt");
+    }).select("name email idCardFront idCardBack selfie verificationStatus createdAt");
 
     res.json({ count: doctors.length, doctors });
   } catch (error) {
@@ -80,7 +80,7 @@ exports.getPendingDoctors = async (req, res) => {
 exports.getAllDoctors = async (req, res) => {
   try {
     const doctors = await User.find({ role: "doctor" })
-      .select("name email idCardImage verificationStatus verificationNote createdAt");
+      .select("name email idCardFront idCardBack selfie verificationStatus verificationNote createdAt");
 
     res.json({ count: doctors.length, doctors });
   } catch (error) {
