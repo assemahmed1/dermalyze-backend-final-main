@@ -1,7 +1,17 @@
 const { Resend } = require("resend");
 
-// Initialize Resend with API Key from environment variables
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-initialize Resend to avoid crashing if RESEND_API_KEY is missing at startup
+let resend = null;
+function getResend() {
+  if (!resend) {
+    if (!process.env.RESEND_API_KEY) {
+      console.warn("[EMAIL SERVICE] RESEND_API_KEY is not set — emails will not be sent.");
+      return null;
+    }
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 /**
  * Helper to send OTP email using Resend API
@@ -11,8 +21,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 exports.sendOTPEmail = async (email, otp) => {
   try {
     const fromEmail = process.env.RESEND_FROM_EMAIL || "Dermalyze <onboarding@resend.dev>";
-    
-    const { data, error } = await resend.emails.send({
+
+    const client = getResend();
+    if (!client) return null;
+
+    const { data, error } = await client.emails.send({
       from: fromEmail,
       to: [email],
       subject: "Your Password Reset OTP - Dermalyze",
@@ -54,7 +67,10 @@ exports.sendAdminNewDoctorAlert = async (adminEmail, doctorName, idCardImageUrl)
   try {
     const fromEmail = process.env.RESEND_FROM_EMAIL || "Dermalyze <onboarding@resend.dev>";
 
-    const { data, error } = await resend.emails.send({
+    const client = getResend();
+    if (!client) return null;
+
+    const { data, error } = await client.emails.send({
       from: fromEmail,
       to: [adminEmail],
       subject: "New Doctor Registration — ID Verification Required",
@@ -107,7 +123,10 @@ exports.sendDoctorVerificationResult = async (doctorEmail, status, note) => {
       : `<p style="font-size: 16px; color: #e74c3c; font-weight: bold;">Your account was rejected.</p>
          <p style="font-size: 16px; color: #34495e;"><strong>Reason:</strong> ${note || "No reason provided."}</p>`;
 
-    const { data, error } = await resend.emails.send({
+    const client = getResend();
+    if (!client) return null;
+
+    const { data, error } = await client.emails.send({
       from: fromEmail,
       to: [doctorEmail],
       subject,
