@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
-const connectDB = require("./config/db");
+const { connectDB, sequelize } = require("./config/db");
 const analysisRoutes = require("./routes/analysisRoutes");
 const authRoutes = require("./routes/authRoutes");
 const protectedRoutes = require("./routes/protectedRoutes");
@@ -69,7 +69,11 @@ app.use((req, res, next) => {
   next();
 });
 
-connectDB();
+(async () => {
+  await connectDB();
+  await sequelize.sync({ alter: true });
+  console.log("✅ MySQL tables synced successfully.");
+})();
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
