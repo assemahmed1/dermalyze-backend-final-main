@@ -4,6 +4,10 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 const { connectDB, sequelize } = require("./config/db");
+
+// Import all models + associations (must come before sync)
+require("./models");
+
 const analysisRoutes = require("./routes/analysisRoutes");
 const authRoutes = require("./routes/authRoutes");
 const protectedRoutes = require("./routes/protectedRoutes");
@@ -24,7 +28,6 @@ const http = require("http");
 const { Server } = require("socket.io");
 const socketHandler = require("./services/socketHandler");
 const helmet = require("helmet");
-const mongoSanitize = require("express-mongo-sanitize");
 
 const app = express();
 
@@ -55,7 +58,6 @@ app.use(cors({
   origin: process.env.NODE_ENV === "production" ? process.env.FRONTEND_URL : "*"
 }));
 app.use(express.json({ limit: "10kb" }));
-app.use(mongoSanitize());
 
 app.use((req, res, next) => {
   if (req.query) {

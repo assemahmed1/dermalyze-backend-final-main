@@ -11,7 +11,7 @@ const createPatient = async (req, res) => {
     const patient = await Patient.create({
       name, age, gender, diagnosis,
       nationalId, phone, address, medicalHistory,
-      doctor: req.user.id,
+      doctorId: req.user.id,
     });
 
     res.status(201).json(patient);
@@ -22,7 +22,10 @@ const createPatient = async (req, res) => {
 
 const getPatients = async (req, res, next) => {
   try {
-    const patients = await Patient.find({ doctor: req.user.id }).sort({ createdAt: -1 });
+    const patients = await Patient.findAll({
+      where: { doctorId: req.user.id },
+      order: [["createdAt", "DESC"]],
+    });
     res.json(patients);
   } catch (error) {
     next(error);
@@ -33,8 +36,10 @@ const getPatientById = async (req, res, next) => {
   try {
     // IDOR Fix: scope lookup to both ID and doctor
     const patient = await Patient.findOne({
-      _id: req.params.id,
-      doctor: req.user.id,
+      where: {
+        id: req.params.id,
+        doctorId: req.user.id,
+      },
     });
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     res.json(patient);
@@ -53,14 +58,14 @@ const updatePatientStatus = async (req, res, next) => {
     }
 
     // IDOR Fix: ensure patient belongs to this doctor
-    const patient = await Patient.findOneAndUpdate(
-      { _id: req.params.id, doctor: req.user.id },
-      { status: status },
-      { returnDocument: "after" }
+    const [affectedRows] = await Patient.update(
+      { status },
+      { where: { id: req.params.id, doctorId: req.user.id } }
     );
 
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    if (affectedRows === 0) return res.status(404).json({ message: "Patient not found" });
 
+    const patient = await Patient.findByPk(req.params.id);
     res.json(patient);
   } catch (error) {
     next(error);
@@ -77,14 +82,14 @@ const updateRecoveryProgress = async (req, res, next) => {
     }
 
     // IDOR Fix: ensure patient belongs to this doctor
-    const patient = await Patient.findOneAndUpdate(
-      { _id: req.params.id, doctor: req.user.id },
+    const [affectedRows] = await Patient.update(
       { recoveryProgress: progress },
-      { returnDocument: "after" }
+      { where: { id: req.params.id, doctorId: req.user.id } }
     );
 
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    if (affectedRows === 0) return res.status(404).json({ message: "Patient not found" });
 
+    const patient = await Patient.findByPk(req.params.id);
     res.json({ message: "Recovery progress updated", patient });
   } catch (error) {
     next(error);

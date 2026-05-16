@@ -1,8 +1,8 @@
 const Patient = require("../models/Patient");
 const Medication = require("../models/Medication");
+const { Op } = require("sequelize");
 
 // 🧠 My Smart History
-// Doctor searches by disease → finds best performing medication
 exports.getSmartHistory = async (req, res, next) => {
   try {
     const doctorId = req.user.id;
@@ -12,10 +12,11 @@ exports.getSmartHistory = async (req, res, next) => {
       return res.status(400).json({ message: "Disease name is required" });
     }
 
-    // Get all doctor's patients with matching diagnosis
-    const patients = await Patient.find({
-      doctor: doctorId,
-      diagnosis: { $regex: disease, $options: "i" },
+    const patients = await Patient.findAll({
+      where: {
+        doctorId,
+        diagnosis: { [Op.like]: `%${disease}%` },
+      },
     });
 
     if (patients.length === 0) {
@@ -27,42 +28,32 @@ exports.getSmartHistory = async (req, res, next) => {
       });
     }
 
-    const patientIds = patients.map((p) => p._id);
+    const patientIds = patients.map((p) => p.id);
 
-    // Get all medications prescribed to these patients
-    const medications = await Medication.find({
-      patient: { $in: patientIds },
-      doctor: doctorId,
-    }).populate("patient", "name recoveryProgress");
+    const medications = await Medication.findAll({
+      where: {
+        patientId: { [Op.in]: patientIds },
+        doctorId,
+      },
+      include: [{ model: Patient, as: "patient", attributes: ["name", "recoveryProgress"] }],
+    });
 
-    // Calculate performance of each medication
     const drugMap = {};
-
     for (const med of medications) {
       const drugName = med.name;
       const recovery = med.patient?.recoveryProgress || 0;
-
       if (!drugMap[drugName]) {
-        drugMap[drugName] = {
-          name: drugName,
-          totalCases: 0,
-          totalRecovery: 0,
-          patients: [],
-        };
+        drugMap[drugName] = { name: drugName, totalCases: 0, totalRecovery: 0, patients: [] };
       }
-
       drugMap[drugName].totalCases += 1;
       drugMap[drugName].totalRecovery += recovery;
       drugMap[drugName].patients.push({
         name: med.patient?.name,
         recoveryProgress: recovery,
-        weeksOfTreatment: Math.ceil(
-          (new Date() - new Date(med.createdAt)) / (1000 * 60 * 60 * 24 * 7)
-        ),
+        weeksOfTreatment: Math.ceil((new Date() - new Date(med.createdAt)) / (1000 * 60 * 60 * 24 * 7)),
       });
     }
 
-    // Sort medications by average recovery (highest first)
     const insights = Object.values(drugMap)
       .map((drug) => ({
         name: drug.name,
@@ -73,9 +64,7 @@ exports.getSmartHistory = async (req, res, next) => {
       .sort((a, b) => b.avgRecovery - a.avgRecovery);
 
     const bestDrug = insights[0] || null;
-    const highestRecovery = bestDrug
-      ? Math.max(...bestDrug.patients.map((p) => p.recoveryProgress))
-      : 0;
+    const highestRecovery = bestDrug ? Math.max(...bestDrug.patients.map((p) => p.recoveryProgress)) : 0;
 
     res.json({
       disease,

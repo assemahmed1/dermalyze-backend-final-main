@@ -14,7 +14,9 @@ const requireVerifiedDoctor = async (req, res, next) => {
       return next();
     }
 
-    const user = await User.findById(req.user.id).select("verificationStatus");
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["verificationStatus"],
+    });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

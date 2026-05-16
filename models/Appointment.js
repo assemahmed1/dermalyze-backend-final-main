@@ -1,51 +1,54 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/db");
 
-const appointmentSchema = new mongoose.Schema(
+const Appointment = sequelize.define(
+  "Appointment",
   {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     patientId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Patient",
-      required: true,
-      index: true,
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "Patients", key: "id" },
     },
     doctorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "Users", key: "id" },
     },
     patientName: {
-      type: String,
-      required: true,
-      trim: true,
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     diagnosis: {
-      type: String,
-      required: true,
-      trim: true,
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     appointmentDate: {
-      type: Date,
-      required: true,
+      type: DataTypes.DATEONLY,
+      allowNull: false,
     },
     appointmentTime: {
-      type: String,
-      required: true,
-      // Matches HH:MM format
-      match: /^([01]\d|2[0-3]):?([0-5]\d)$/,
+      type: DataTypes.STRING(5),
+      allowNull: false,
     },
     status: {
-      type: String,
-      enum: ["scheduled", "completed", "cancelled"],
-      default: "scheduled",
+      type: DataTypes.ENUM("scheduled", "completed", "cancelled"),
+      defaultValue: "scheduled",
     },
   },
   {
+    tableName: "Appointments",
     timestamps: true,
+    indexes: [
+      { fields: ["patientId"] },
+      { fields: ["doctorId"] },
+      { fields: ["appointmentDate"] },
+    ],
   }
 );
 
-// Index for sorting appointments by date
-appointmentSchema.index({ appointmentDate: 1 });
-
-module.exports = mongoose.model("Appointment", appointmentSchema);
+module.exports = Appointment;

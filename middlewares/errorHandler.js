@@ -4,27 +4,27 @@
 const errorHandler = (err, req, res, next) => {
   console.error(`[ERROR] ${err.message}`);
 
-  // Mongoose duplicate key error (e.g. duplicate email)
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
+  // Sequelize unique constraint error (e.g. duplicate email)
+  if (err.name === "SequelizeUniqueConstraintError") {
+    const field = err.errors?.[0]?.path || "field";
     return res.status(400).json({
       message: `${field} already exists`
     });
   }
 
-  // Mongoose validation error
-  if (err.name === "ValidationError") {
-    const messages = Object.values(err.errors).map((e) => e.message);
+  // Sequelize validation error
+  if (err.name === "SequelizeValidationError") {
+    const messages = err.errors.map((e) => e.message);
     return res.status(400).json({
       message: "Validation error",
       errors: messages
     });
   }
 
-  // Mongoose invalid ObjectId
-  if (err.name === "CastError") {
+  // Sequelize database error (e.g. bad column, syntax)
+  if (err.name === "SequelizeDatabaseError") {
     return res.status(400).json({
-      message: `Invalid ID format`
+      message: "Database error"
     });
   }
 

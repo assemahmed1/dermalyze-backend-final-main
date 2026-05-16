@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const User = require("../models/User");
 const Patient = require("../models/Patient");
 const Message = require("../models/Message");
@@ -13,17 +14,11 @@ const qrcode = require("qrcode");
 exports.updateNotificationPreferences = async (req, res, next) => {
   try {
     const { pushNotifications, emailNotifications, smsNotifications } = req.body;
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        pushNotifications,
-        emailNotifications,
-        smsNotifications,
-      },
-      { returnDocument: "after" }
+    await User.update(
+      { pushNotifications, emailNotifications, smsNotifications },
+      { where: { id: req.user.id } }
     );
-
+    const user = await User.findByPk(req.user.id);
     res.json({
       message: "Notification preferences updated successfully",
       preferences: {
@@ -32,86 +27,51 @@ exports.updateNotificationPreferences = async (req, res, next) => {
         smsNotifications: user.smsNotifications,
       },
     });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
-// @desc    Enable 2FA (Generate secret and QR code)
+// @desc    Enable 2FA
 // @route   POST /api/user/2fa/enable
 exports.enable2FA = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
-
-    if (user.twoFactorEnabled) {
-      return res.status(400).json({ message: "2FA is already enabled" });
-    }
-
-    // Generate secret
-    const secret = speakeasy.generateSecret({
-      name: `Dermalyze (${user.email})`,
-    });
-
-    // Save temporary secret (before verification)
+    const user = await User.findByPk(req.user.id);
+    if (user.twoFactorEnabled) return res.status(400).json({ message: "2FA is already enabled" });
+    const secret = speakeasy.generateSecret({ name: `Dermalyze (${user.email})` });
     user.twoFactorSecret = secret.base32;
-    await user.save();
-
-    // Generate QR code data URL
+    await user.save({ hooks: false });
     const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
-
-    res.json({
-      message: "2FA generation successful. Verify with OTP to activate.",
-      qrCode: qrCodeUrl,
-      secret: secret.base32, // Provide secret for manual entry
-    });
-  } catch (error) {
-    next(error);
-  }
+    res.json({ message: "2FA generation successful. Verify with OTP to activate.", qrCode: qrCodeUrl, secret: secret.base32 });
+  } catch (error) { next(error); }
 };
 
-// @desc    Verify 2FA to activate
+// @desc    Verify 2FA
 // @route   POST /api/user/2fa/verify
 exports.verify2FA = async (req, res, next) => {
   try {
     const { token } = req.body;
-    const user = await User.findById(req.user.id);
-
-    if (!token) {
-      return res.status(400).json({ message: "OTP token is required" });
-    }
-
-    const verified = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: "base32",
-      token,
-    });
-
+    const user = await User.findByPk(req.user.id);
+    if (!token) return res.status(400).json({ message: "OTP token is required" });
+    const verified = speakeasy.totp.verify({ secret: user.twoFactorSecret, encoding: "base32", token });
     if (verified) {
       user.twoFactorEnabled = true;
-      await user.save();
+      await user.save({ hooks: false });
       res.json({ message: "2FA activated successfully" });
     } else {
       res.status(400).json({ message: "Invalid OTP token" });
     }
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
 // @desc    Disable 2FA
 // @route   POST /api/user/2fa/disable
 exports.disable2FA = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
-
+    const user = await User.findByPk(req.user.id);
     user.twoFactorEnabled = false;
     user.twoFactorSecret = null;
-    await user.save();
-
+    await user.save({ hooks: false });
     res.json({ message: "2FA disabled successfully" });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
 // @desc    Delete account and all related data (Cascading Deletion)
@@ -119,22 +79,15 @@ exports.disable2FA = async (req, res, next) => {
 exports.deleteAccount = async (req, res, next) => {
   try {
     const userId = req.user.id;
-
-    // 1. Permanently delete all related records
     await Promise.all([
-      Patient.deleteMany({ doctor: userId }),
-      Message.deleteMany({ $or: [{ senderId: userId }, { receiverId: userId }] }),
-      Notification.deleteMany({ doctorId: userId }),
-      Appointment.deleteMany({ doctorId: userId }),
-      Analysis.deleteMany({ doctor: userId }),
-      Medication.deleteMany({ doctor: userId }),
+      Patient.destroy({ where: { doctorId: userId } }),
+      Message.destroy({ where: { [Op.or]: [{ senderId: userId }, { receiverId: userId }] } }),
+      Notification.destroy({ where: { doctorId: userId } }),
+      Appointment.destroy({ where: { doctorId: userId } }),
+      Analysis.destroy({ where: { doctorId: userId } }),
+      Medication.destroy({ where: { doctorId: userId } }),
     ]);
-
-    // 2. Delete the user itself
-    await User.findByIdAndDelete(userId);
-
+    await User.destroy({ where: { id: userId } });
     res.json({ message: "Account and all associated clinical data deleted permanently" });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };

@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Patient = require("../models/Patient");
+const PatientReview = require("../models/PatientReview");
 const Analysis = require("../models/Analysis");
 const Notification = require("../models/Notification");
 const Appointment = require("../models/Appointment");
@@ -10,13 +11,13 @@ exports.linkDoctor = async (req, res, next) => {
   try {
     const { doctorCode } = req.body;
 
-    const doctor = await User.findOne({ doctorCode, role: "doctor" });
+    const doctor = await User.findOne({ where: { doctorCode, role: "doctor" } });
 
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    await User.findByIdAndUpdate(req.user.id, { doctor: doctor._id }, { returnDocument: "after" });
+    await User.update({ doctorId: doctor.id }, { where: { id: req.user.id } });
 
     res.json({ message: "Doctor linked successfully", doctor: doctor.name });
   } catch (error) {
@@ -27,7 +28,10 @@ exports.linkDoctor = async (req, res, next) => {
 // Get doctor's patients
 exports.getPatients = async (req, res, next) => {
   try {
-    const patients = await Patient.find({ doctor: req.user.id }).sort({ createdAt: -1 });
+    const patients = await Patient.findAll({
+      where: { doctorId: req.user.id },
+      order: [["createdAt", "DESC"]],
+    });
     res.json(patients);
   } catch (error) {
     next(error);
@@ -40,12 +44,15 @@ exports.getPatientAnalyses = async (req, res, next) => {
     const { id } = req.params;
 
     // IDOR Fix: Explicitly check if the patient exists and belongs to this doctor
-    const patient = await Patient.findOne({ _id: id, doctor: req.user.id });
+    const patient = await Patient.findOne({ where: { id, doctorId: req.user.id } });
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
 
-    const analyses = await Analysis.find({ patient: id }).sort({ createdAt: -1 });
+    const analyses = await Analysis.findAll({
+      where: { patientId: id },
+      order: [["createdAt", "DESC"]],
+    });
 
     res.json(analyses);
   } catch (error) {
@@ -59,9 +66,9 @@ exports.getDoctorStats = async (req, res, next) => {
     const doctorId = req.user.id;
 
     const [total, critical, improving] = await Promise.all([
-      Patient.countDocuments({ doctor: doctorId }),
-      Patient.countDocuments({ doctor: doctorId, status: "Critical" }),
-      Patient.countDocuments({ doctor: doctorId, status: "Improving" }),
+      Patient.count({ where: { doctorId } }),
+      Patient.count({ where: { doctorId, status: "Critical" } }),
+      Patient.count({ where: { doctorId, status: "Improving" } }),
     ]);
 
     res.json({
@@ -78,7 +85,10 @@ exports.getDoctorStats = async (req, res, next) => {
 // GET /doctor/notifications
 exports.getNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.find({ doctorId: req.user.id }).sort({ createdAt: -1 });
+    const notifications = await Notification.findAll({
+      where: { doctorId: req.user.id },
+      order: [["createdAt", "DESC"]],
+    });
     res.json(notifications);
   } catch (error) {
     next(error);
@@ -88,7 +98,10 @@ exports.getNotifications = async (req, res, next) => {
 // PUT /doctor/notifications/read
 exports.markNotificationsRead = async (req, res, next) => {
   try {
-    await Notification.updateMany({ doctorId: req.user.id, isRead: false }, { isRead: true });
+    await Notification.update(
+      { isRead: true },
+      { where: { doctorId: req.user.id, isRead: false } }
+    );
     res.json({ message: "All notifications marked as read" });
   } catch (error) {
     next(error);
@@ -160,26 +173,27 @@ exports.addReview = async (req, res, next) => {
     const { patientId } = req.params;
     const { review } = req.body;
 
-    const patient = await Patient.findOneAndUpdate(
-      { _id: patientId, doctor: req.user.id },
-      {
-        $push: {
-          reviews: {
-            text: review,
-            doctorId: req.user.id,
-          },
-        },
-      },
-      { returnDocument: "after", runValidators: true }
-    );
-
+    // Verify patient belongs to this doctor
+    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
 
+    const newReview = await PatientReview.create({
+      patientId,
+      doctorId: req.user.id,
+      text: review,
+    });
+
+    // Return all reviews for this patient
+    const reviews = await PatientReview.findAll({
+      where: { patientId },
+      order: [["createdAt", "DESC"]],
+    });
+
     res.status(201).json({
       message: "Review added successfully",
-      reviews: patient.reviews,
+      reviews,
     });
   } catch (error) {
     next(error);
@@ -191,16 +205,17 @@ exports.getReviews = async (req, res, next) => {
   try {
     const { patientId } = req.params;
 
-    const patient = await Patient.findOne({ _id: patientId, doctor: req.user.id });
-
+    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
 
-    // Return reviews sorted by createdAt descending
-    const sortedReviews = patient.reviews.sort((a, b) => b.createdAt - a.createdAt);
+    const reviews = await PatientReview.findAll({
+      where: { patientId },
+      order: [["createdAt", "DESC"]],
+    });
 
-    res.json(sortedReviews);
+    res.json(reviews);
   } catch (error) {
     next(error);
   }
@@ -213,7 +228,7 @@ exports.createAppointment = async (req, res, next) => {
     const { patientName, diagnosis, appointmentDate, appointmentTime } = req.body;
 
     // Verify patient belongs to doctor
-    const patient = await Patient.findOne({ _id: patientId, doctor: req.user.id });
+    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
@@ -236,7 +251,10 @@ exports.createAppointment = async (req, res, next) => {
 // 🗓️ GET /doctor/appointments
 exports.getAppointments = async (req, res, next) => {
   try {
-    const appointments = await Appointment.find({ doctorId: req.user.id }).sort({ appointmentDate: 1 });
+    const appointments = await Appointment.findAll({
+      where: { doctorId: req.user.id },
+      order: [["appointmentDate", "ASC"]],
+    });
     res.json(appointments);
   } catch (error) {
     next(error);
@@ -249,16 +267,16 @@ exports.updateAppointmentStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const appointment = await Appointment.findOneAndUpdate(
-      { _id: id, doctorId: req.user.id },
+    const [affectedRows] = await Appointment.update(
       { status },
-      { returnDocument: "after", runValidators: true }
+      { where: { id, doctorId: req.user.id } }
     );
 
-    if (!appointment) {
+    if (affectedRows === 0) {
       return res.status(404).json({ message: "Appointment not found or unauthorized access" });
     }
 
+    const appointment = await Appointment.findByPk(id);
     res.json(appointment);
   } catch (error) {
     next(error);
@@ -270,9 +288,9 @@ exports.deleteAppointment = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const appointment = await Appointment.findOneAndDelete({ _id: id, doctorId: req.user.id });
+    const deleted = await Appointment.destroy({ where: { id, doctorId: req.user.id } });
 
-    if (!appointment) {
+    if (deleted === 0) {
       return res.status(404).json({ message: "Appointment not found or unauthorized access" });
     }
 

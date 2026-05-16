@@ -1,47 +1,36 @@
+const { Op } = require("sequelize");
 const ClinicalMedication = require("../models/ClinicalMedication");
 const ClinicalDisease = require("../models/ClinicalDisease");
 
 /**
  * GET /api/resources/medications
- * Public endpoint to fetch medications library
  */
 exports.getMedications = async (req, res, next) => {
   try {
     const { search } = req.query;
-    let query = {};
-
+    const where = {};
     if (search) {
-      query.name = { $regex: search, $options: "i" };
+      where.name = { [Op.like]: `%${search}%` };
     }
-
-    const medications = await ClinicalMedication.find(query).sort({ name: 1 });
+    const medications = await ClinicalMedication.findAll({ where, order: [["name", "ASC"]] });
     res.json(medications);
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
 /**
  * GET /api/resources/diseases
- * Public endpoint to fetch skin diseases encyclopedia
  */
 exports.getDiseases = async (req, res, next) => {
   try {
     const { search } = req.query;
-    let query = {};
-
+    const where = {};
     if (search) {
-      query = {
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { description: { $regex: search, $options: "i" } }
-        ]
-      };
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+      ];
     }
-
-    const diseases = await ClinicalDisease.find(query).sort({ name: 1 });
+    const diseases = await ClinicalDisease.findAll({ where, order: [["name", "ASC"]] });
     res.json(diseases);
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };

@@ -1,8 +1,8 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 
-const Analysis = sequelize.define(
-  "Analysis",
+const PatientImage = sequelize.define(
+  "PatientImage",
   {
     id: {
       type: DataTypes.INTEGER.UNSIGNED,
@@ -14,24 +14,15 @@ const Analysis = sequelize.define(
       allowNull: false,
       references: { model: "Patients", key: "id" },
     },
-    doctorId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: "Users", key: "id" },
-    },
-    imageUrl: {
+    url: {
       type: DataTypes.STRING(1024),
       allowNull: false,
     },
-    result: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
   },
   {
-    tableName: "Analyses",
+    tableName: "PatientImages",
     timestamps: true,
   }
 );
 
-module.exports = Analysis;
+module.exports = PatientImage;

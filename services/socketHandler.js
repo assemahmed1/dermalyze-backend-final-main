@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Message = require("../models/Message");
@@ -11,7 +10,7 @@ const socketHandler = (io) => {
       if (!token) return next(new Error("Authentication error: No token provided"));
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id);
+      const user = await User.findByPk(decoded.id);
 
       if (!user) return next(new Error("User not found"));
 
@@ -27,10 +26,10 @@ const socketHandler = (io) => {
     console.log(`🟢 User connected: ${socket.user.name} (${userId})`);
 
     // 1. Update online status
-    await User.findByIdAndUpdate(userId, { isOnline: true });
+    await User.update({ isOnline: true }, { where: { id: userId } });
     
     // 2. Join a personal room for private messaging
-    socket.join(userId);
+    socket.join(String(userId));
 
     // 📩 Handle sending message
     socket.on("send_message", async (data) => {
@@ -49,9 +48,9 @@ const socketHandler = (io) => {
         });
 
         // Emit to receiver's personal room
-        io.to(receiverId).emit("receive_message", message);
+        io.to(String(receiverId)).emit("receive_message", message);
         
-        // Also emit back to sender for confirmation (optional, but good for sync)
+        // Also emit back to sender for confirmation
         socket.emit("message_sent", message);
 
       } catch (error) {
@@ -63,7 +62,7 @@ const socketHandler = (io) => {
     // ⌨️ Handle typing status
     socket.on("typing", (data) => {
       const { receiverId, isTyping } = data;
-      io.to(receiverId).emit("user_typing", {
+      io.to(String(receiverId)).emit("user_typing", {
         userId: userId,
         isTyping,
       });
@@ -72,7 +71,7 @@ const socketHandler = (io) => {
     // 🔴 Handle disconnect
     socket.on("disconnect", async () => {
       console.log(`🔴 User disconnected: ${userId}`);
-      await User.findByIdAndUpdate(userId, { isOnline: false });
+      await User.update({ isOnline: false }, { where: { id: userId } });
     });
   });
 };

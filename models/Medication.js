@@ -1,30 +1,49 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/db");
 
-const medicationSchema = new mongoose.Schema(
+const Medication = sequelize.define(
+  "Medication",
   {
-    patient: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Patient",
-      required: true,
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
     },
-
-    doctor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    patientId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "Patients", key: "id" },
     },
-
-    name: { type: String, required: true },
-
-    dosage: { type: String, required: true }, // e.g. "1 tablet", "Apply twice daily"
-
-    frequency: { type: String, required: true }, // e.g. "Morning & Evening"
-
-    isActive: { type: Boolean, default: true },
-
-    notes: { type: String, default: "" },
+    doctorId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "Users", key: "id" },
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    dosage: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    frequency: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      defaultValue: "",
+    },
   },
-  { timestamps: true }
+  {
+    tableName: "Medications",
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model("Medication", medicationSchema);
+module.exports = Medication;

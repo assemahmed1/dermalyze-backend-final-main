@@ -1,34 +1,45 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/db");
 
-const clinicalMedicationSchema = new mongoose.Schema(
+const ClinicalMedication = sequelize.define(
+  "ClinicalMedication",
   {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     name: {
-      type: String,
-      required: true,
-      trim: true,
+      type: DataTypes.STRING,
+      allowNull: false,
       unique: true,
     },
     category: {
-      type: String,
-      trim: true,
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     description: {
-      type: String,
-      trim: true,
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
-    uses: [{ type: String }],
-    sideEffects: [{ type: String }],
+    // Stored as JSON array since these are simple string lists
+    uses: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    sideEffects: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
     dosage: {
-      type: String,
-      trim: true,
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
+    tableName: "ClinicalMedications",
     timestamps: true,
   }
 );
 
-// Search index
-clinicalMedicationSchema.index({ name: "text", category: "text" });
-
-module.exports = mongoose.model("ClinicalMedication", clinicalMedicationSchema);
+module.exports = ClinicalMedication;

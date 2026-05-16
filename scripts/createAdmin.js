@@ -1,6 +1,9 @@
 require("dotenv").config();
-const mongoose = require("mongoose");
-const connectDB = require("../config/db");
+const { connectDB, sequelize } = require("../config/db");
+
+// Load all models + associations
+require("../models");
+
 const User = require("../models/User");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@dermalyze.com";
@@ -10,8 +13,9 @@ const ADMIN_NAME = process.env.ADMIN_NAME || "Admin";
 async function createAdmin() {
   try {
     await connectDB();
+    await sequelize.sync({ alter: true });
 
-    const existing = await User.findOne({ email: ADMIN_EMAIL });
+    const existing = await User.findOne({ where: { email: ADMIN_EMAIL } });
 
     if (existing) {
       if (existing.role === "admin") {
@@ -19,8 +23,8 @@ async function createAdmin() {
       } else {
         existing.role = "admin";
         existing.verificationStatus = "verified";
-        await existing.save();
-        console.log(`🔄 Updated existing user to admin: ${ADMIN_EMAIL} (was ${existing.role})`);
+        await existing.save({ hooks: false });
+        console.log(`🔄 Updated existing user to admin: ${ADMIN_EMAIL}`);
       }
     } else {
       await User.create({
@@ -35,8 +39,8 @@ async function createAdmin() {
   } catch (error) {
     console.error("❌ Failed to create admin:", error.message);
   } finally {
-    await mongoose.disconnect();
-    console.log("🔌 Disconnected from MongoDB");
+    await sequelize.close();
+    console.log("🔌 Disconnected from MySQL");
     process.exit(0);
   }
 }

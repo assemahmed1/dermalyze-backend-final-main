@@ -1,20 +1,24 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/db");
 
-const conversationSchema = new mongoose.Schema(
+const Conversation = sequelize.define(
+  "Conversation",
   {
-    participants: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-      },
-    ],
-    lastMessage: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Message",
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    lastMessageId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      references: { model: "Messages", key: "id" },
     },
   },
-  { timestamps: true }
+  {
+    tableName: "Conversations",
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model("Conversation", conversationSchema);
+module.exports = Conversation;

@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/db");
 const bcrypt = require("bcryptjs");
 
 // Generate unique doctor code
@@ -6,133 +7,124 @@ function generateDoctorCode() {
   return "DOC-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
+const User = sequelize.define(
+  "User",
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    role: {
+      type: DataTypes.ENUM("doctor", "patient", "admin"),
+      defaultValue: "patient",
+    },
+    doctorCode: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: true,
+    },
+    doctorId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      references: { model: "Users", key: "id" },
+    },
+    fcmToken: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    notificationsEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    // Notification Preferences
+    pushNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
+    emailNotifications: { type: DataTypes.BOOLEAN, defaultValue: true },
+    smsNotifications: { type: DataTypes.BOOLEAN, defaultValue: false },
+    // Two-Factor Authentication
+    twoFactorEnabled: { type: DataTypes.BOOLEAN, defaultValue: false },
+    twoFactorSecret: { type: DataTypes.STRING, defaultValue: null },
+    isOnline: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    resetPasswordOTP: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    resetPasswordOTPExpires: {
+      type: DataTypes.DATE,
+      defaultValue: null,
+    },
+    // Doctor ID Card Verification
+    idCardFront: {
+      type: DataTypes.STRING(1024),
+      defaultValue: null,
+    },
+    idCardBack: {
+      type: DataTypes.STRING(1024),
+      defaultValue: null,
+    },
+    selfie: {
+      type: DataTypes.STRING(1024),
+      defaultValue: null,
+    },
+    verificationStatus: {
+      type: DataTypes.ENUM("pending", "verified", "rejected"),
+      defaultValue: "pending",
+    },
+    verificationNote: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
   },
-
-  email: {
-    type: String,
-    required: true,
-    unique: true
-  },
-
-  password: {
-    type: String,
-    required: true
-  },
-
-  role: {
-    type: String,
-    enum: ["doctor", "patient", "admin"],
-    default: "patient"
-  },
-
-  doctorCode: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-
-  doctor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  },
-  
-  fcmToken: {
-    type: String,
-    default: null
-  },
-
-  notificationsEnabled: {
-    type: Boolean,
-    default: true
-  },
-
-  // ✅ Notification Preferences
-  pushNotifications: { type: Boolean, default: true },
-  emailNotifications: { type: Boolean, default: true },
-  smsNotifications: { type: Boolean, default: false },
-
-  // ✅ Two-Factor Authentication
-  twoFactorEnabled: { type: Boolean, default: false },
-  twoFactorSecret: { type: String, default: null },
-
-  isOnline: {
-    type: Boolean,
-    default: false
-  },
-
-  resetPasswordOTP: {
-    type: String,
-    default: null
-  },
-
-  resetPasswordOTPExpires: {
-    type: Date,
-    default: null
-  },
-
-  // ✅ Doctor ID Card Verification
-  idCardFront: {
-    type: String,
-    default: null
-  },
-
-  idCardBack: {
-    type: String,
-    default: null
-  },
-
-  selfie: {
-    type: String,
-    default: null
-  },
-
-  verificationStatus: {
-    type: String,
-    enum: ["pending", "verified", "rejected"],
-    default: "pending"
-  },
-
-  verificationNote: {
-    type: String,
-    default: null
+  {
+    tableName: "Users",
+    timestamps: true,
+    hooks: {
+      beforeCreate: async (user) => {
+        // Hash password
+        if (user.password) {
+          user.password = await bcrypt.hash(user.password, 10);
+        }
+        // Generate doctor code
+        if (user.role === "doctor" && !user.doctorCode) {
+          user.doctorCode = generateDoctorCode();
+        }
+        // Auto-set verificationStatus
+        if (user.role === "doctor") {
+          user.verificationStatus = user.verificationStatus || "pending";
+        } else {
+          user.verificationStatus = "verified";
+        }
+      },
+      beforeUpdate: async (user) => {
+        if (user.changed("password")) {
+          user.password = await bcrypt.hash(user.password, 10);
+        }
+      },
+    },
   }
-});
-
-/**
- * Unified pre-save hook for password hashing and doctor code generation.
- * NOTE: Modern Mongoose async hooks should not use 'next' to avoid 
- * "next is not a function" errors.
- */
-userSchema.pre("save", async function () {
-  // 1. Handle Password Hashing
-  if (this.isModified("password")) {
-    this.password = await bcrypt.hash(this.password, 10);
-  }
-
-  // 2. Handle Doctor Code Generation
-  if (this.role === "doctor" && !this.doctorCode) {
-    this.doctorCode = generateDoctorCode();
-  }
-
-  // 3. Auto-set verificationStatus based on role
-  if (this.isNew) {
-    if (this.role === "doctor") {
-      this.verificationStatus = this.verificationStatus || "pending";
-    } else {
-      this.verificationStatus = "verified";
-    }
-  }
-});
+);
 
 /**
  * Convenience method to check password matches.
  */
-userSchema.methods.comparePassword = async function (enteredPassword) {
+User.prototype.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = User;

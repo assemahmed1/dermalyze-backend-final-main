@@ -1,35 +1,42 @@
-const mongoose = require("mongoose");
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../config/db");
 
-const messageSchema = new mongoose.Schema(
+const Message = sequelize.define(
+  "Message",
   {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     senderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "Users", key: "id" },
     },
     receiverId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "Users", key: "id" },
     },
     content: {
-      type: String,
-      required: true,
-      trim: true,
+      type: DataTypes.TEXT,
+      allowNull: false,
     },
     isRead: {
-      type: Boolean,
-      default: false,
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {
+    tableName: "Messages",
     timestamps: true,
+    indexes: [
+      { fields: ["senderId"] },
+      { fields: ["receiverId"] },
+      { fields: ["senderId", "receiverId", "createdAt"] },
+    ],
   }
 );
 
-// Index for conversation performance
-messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
-
-module.exports = mongoose.model("Message", messageSchema);
+module.exports = Message;

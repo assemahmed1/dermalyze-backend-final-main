@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const generateToken = require("../utils/generateToken");
 const cloudinary = require("../config/cloudinary");
 const { sendAdminNewDoctorAlert } = require("../services/emailService");
+const { Op } = require("sequelize");
 
 // Upload image buffer to Cloudinary
 function uploadToCloudinary(buffer, folder) {
@@ -24,12 +25,10 @@ exports.register = async (req, res) => {
     const { name, email, password, role, doctorCode } = req.body;
 
     // Check if email already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "Email already in use" });
     }
-
-    // User.create will now handle password hashing via pre-save hook
 
     let user;
 
@@ -75,7 +74,7 @@ exports.register = async (req, res) => {
         return res.status(400).json({ message: "Doctor code is required to register as a patient" });
       }
 
-      const doctor = await User.findOne({ doctorCode, role: "doctor" });
+      const doctor = await User.findOne({ where: { doctorCode, role: "doctor" } });
       if (!doctor) {
         return res.status(400).json({ message: "Invalid doctor code. Please ask your doctor for the correct code." });
       }
@@ -85,11 +84,11 @@ exports.register = async (req, res) => {
         email,
         password,
         role: "patient",
-        doctor: doctor._id
+        doctorId: doctor.id
       });
     }
 
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user.id, user.role);
 
     res.status(201).json({
       message: role === "doctor"
@@ -97,7 +96,7 @@ exports.register = async (req, res) => {
         : "User registered successfully",
       token,
       user: {
-        _id: user._id,
+        _id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -116,7 +115,7 @@ exports.register = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -127,8 +126,8 @@ exports.forgotPassword = async (req, res) => {
 
     // Save OTP and expiry (10 mins)
     user.resetPasswordOTP = otp;
-    user.resetPasswordOTPExpires = Date.now() + 10 * 60 * 1000;
-    await user.save();
+    user.resetPasswordOTPExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save({ hooks: false }); // skip password re-hashing
 
     // Send Email
     const { sendOTPEmail } = require("../services/emailService");
@@ -147,9 +146,11 @@ exports.verifyOTP = async (req, res) => {
     const { email, code } = req.body;
 
     const user = await User.findOne({
-      email,
-      resetPasswordOTP: code,
-      resetPasswordOTPExpires: { $gt: Date.now() },
+      where: {
+        email,
+        resetPasswordOTP: code,
+        resetPasswordOTPExpires: { [Op.gt]: new Date() },
+      },
     });
 
     if (!user) {
@@ -168,17 +169,19 @@ exports.resetPassword = async (req, res) => {
     const { email, code, newPassword } = req.body;
 
     const user = await User.findOne({
-      email,
-      resetPasswordOTP: code,
-      resetPasswordOTPExpires: { $gt: Date.now() },
+      where: {
+        email,
+        resetPasswordOTP: code,
+        resetPasswordOTPExpires: { [Op.gt]: new Date() },
+      },
     });
 
     if (!user) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // Update password
-    user.password = newPassword; // Hashing is handled by userSchema.pre("save")
+    // Update password — beforeUpdate hook will hash it
+    user.password = newPassword;
     user.resetPasswordOTP = null;
     user.resetPasswordOTPExpires = null;
     await user.save();
@@ -194,7 +197,7 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -206,13 +209,13 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user.id, user.role);
 
     res.json({
       message: "Login successful",
       token,
       user: {
-        _id: user._id,
+        _id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,

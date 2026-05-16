@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const { Op, fn, col, literal } = require("sequelize");
 const Message = require("../models/Message");
 const User = require("../models/User");
 
@@ -6,74 +6,62 @@ const User = require("../models/User");
 // @route   GET /api/chat/conversations
 exports.getConversations = async (req, res, next) => {
   try {
-    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const userId = req.user.id;
 
-    const conversations = await Message.aggregate([
-      // 1. Find all messages related to this user
-      {
-        $match: {
-          $or: [{ senderId: userId }, { receiverId: userId }],
-        },
+    // Get all distinct partner IDs from messages
+    const messages = await Message.findAll({
+      where: {
+        [Op.or]: [{ senderId: userId }, { receiverId: userId }],
       },
-      // 2. Sort by date descending so the first one in each group is the latest
-      { $sort: { createdAt: -1 } },
-      // 3. Project partnerId (the ID of the OTHER user in the chat)
-      {
-        $project: {
-          partnerId: {
-            $cond: { if: { $eq: ["$senderId", userId] }, then: "$receiverId", else: "$senderId" },
-          },
-          content: 1,
-          isRead: 1,
-          senderId: 1,
-          receiverId: 1,
-          createdAt: 1,
-        },
-      },
-      // 4. Group by partner to find last message summary
-      {
-        $group: {
-          _id: "$partnerId",
-          lastMessage: { $first: "$content" },
-          time: { $first: "$createdAt" },
-          // Count unread messages sent TO the current user from this partner
-          unreadCount: {
-            $sum: {
-              $cond: [
-                { $and: [{ $eq: ["$isRead", false] }, { $eq: ["$receiverId", userId] }] },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-      // 5. Lookup partner details
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "partnerInfo",
-        },
-      },
-      { $unwind: "$partnerInfo" },
-      // 6. Project final shape
-      {
-        $project: {
-          _id: 1,
-          receiverId: "$_id",
-          name: "$partnerInfo.name",
-          role: { $concat: [{ $toUpper: { $substr: ["$partnerInfo.role", 0, 1] } }, { $substr: ["$partnerInfo.role", 1, -1] }] },
-          lastMessage: 1,
-          time: 1,
-          isOnline: "$partnerInfo.isOnline",
-          unreadCount: 1,
-        },
-      },
-      // 7. Sort conversations by time descending
-      { $sort: { time: -1 } },
-    ]);
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Build conversation map keyed by partnerId
+    const convMap = {};
+    for (const msg of messages) {
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (!convMap[partnerId]) {
+        convMap[partnerId] = {
+          _id: partnerId,
+          receiverId: partnerId,
+          lastMessage: msg.content,
+          time: msg.createdAt,
+          unreadCount: 0,
+        };
+      }
+      // Count unread messages sent TO the current user from this partner
+      if (!msg.isRead && msg.receiverId === userId && msg.senderId === partnerId) {
+        convMap[partnerId].unreadCount += 1;
+      }
+    }
+
+    // Fetch partner details
+    const partnerIds = Object.keys(convMap).map(Number);
+    if (partnerIds.length === 0) return res.json([]);
+
+    const partners = await User.findAll({
+      where: { id: { [Op.in]: partnerIds } },
+      attributes: ["id", "name", "role", "isOnline"],
+    });
+
+    const partnerMap = {};
+    for (const p of partners) {
+      partnerMap[p.id] = p;
+    }
+
+    const conversations = Object.values(convMap)
+      .map((conv) => {
+        const partner = partnerMap[conv._id];
+        if (!partner) return null;
+        return {
+          ...conv,
+          name: partner.name,
+          role: partner.role.charAt(0).toUpperCase() + partner.role.slice(1),
+          isOnline: partner.isOnline,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.time) - new Date(a.time));
 
     res.json(conversations);
   } catch (error) {
@@ -88,23 +76,22 @@ exports.getMessages = async (req, res, next) => {
     const { receiverId } = req.params;
     const myId = req.user.id;
 
-    if (!mongoose.Types.ObjectId.isValid(receiverId)) {
-      return res.status(400).json({ message: "Invalid user ID" });
-    }
-
     // 1. Mark all unread messages from this partner to me as read
-    await Message.updateMany(
-      { senderId: receiverId, receiverId: myId, isRead: false },
-      { isRead: true }
+    await Message.update(
+      { isRead: true },
+      { where: { senderId: receiverId, receiverId: myId, isRead: false } }
     );
 
     // 2. Fetch history
-    const messages = await Message.find({
-      $or: [
-        { senderId: myId, receiverId: receiverId },
-        { senderId: receiverId, receiverId: myId },
-      ],
-    }).sort({ createdAt: 1 });
+    const messages = await Message.findAll({
+      where: {
+        [Op.or]: [
+          { senderId: myId, receiverId },
+          { senderId: receiverId, receiverId: myId },
+        ],
+      },
+      order: [["createdAt", "ASC"]],
+    });
 
     res.json(messages);
   } catch (error) {
@@ -123,11 +110,7 @@ exports.sendMessage = async (req, res, next) => {
       return res.status(400).json({ message: "Receiver ID and content are required" });
     }
 
-    const message = await Message.create({
-      senderId,
-      receiverId,
-      content,
-    });
+    const message = await Message.create({ senderId, receiverId, content });
 
     res.status(201).json(message);
   } catch (error) {
