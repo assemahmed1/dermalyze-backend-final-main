@@ -91,7 +91,7 @@ app.use((req, res, next) => {
 
 (async () => {
   await connectDB();
-  await sequelize.sync();
+  await sequelize.sync({ alter: true });
   console.log("✅ MySQL tables synced successfully.");
 })();
 

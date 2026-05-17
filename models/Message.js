@@ -21,7 +21,22 @@ const Message = sequelize.define(
     },
     content: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    type: {
+      type: DataTypes.ENUM("text", "image", "audio", "file"),
+      defaultValue: "text",
       allowNull: false,
+    },
+    mediaUrl: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+      allowNull: true,
+    },
+    durationMs: {
+      type: DataTypes.INTEGER,
+      defaultValue: null,
+      allowNull: true,
     },
     isRead: {
       type: DataTypes.BOOLEAN,

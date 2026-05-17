@@ -34,30 +34,35 @@ const socketHandler = (io) => {
     // 📩 Handle sending message
     socket.on("send_message", async (data) => {
       try {
-        const { receiverId, content } = data;
+        const { receiverId, content, type, mediaUrl, durationMs } = data;
+        const finalType = type || "text";
 
-        if (!receiverId || !content) {
-          return socket.emit("error", { message: "receiverId and content are required" });
+        if (!receiverId) {
+          return socket.emit("error", { message: "receiverId is required" });
+        }
+
+        if (finalType === "text" && !content) {
+          return socket.emit("error", { message: "content is required for text messages" });
         }
 
         // Save message to Database
         const message = await Message.create({
           senderId: userId,
           receiverId,
-          content,
+          content: content || "",
+          type: finalType,
+          mediaUrl: mediaUrl || null,
+          durationMs: durationMs ? parseInt(durationMs, 10) : null,
         });
 
-        const plainMsg = message.get({ plain: true });
-        const msgWithId = {
-          ...plainMsg,
-          _id: plainMsg.id, // For MongoDB backward compatibility
-        };
+        const { formatMessage } = require("../controllers/chatController");
+        const formatted = formatMessage(message);
 
         // Emit to receiver's personal room
-        io.to(String(receiverId)).emit("receive_message", msgWithId);
+        io.to(String(receiverId)).emit("receive_message", formatted);
         
         // Also emit back to sender for confirmation
-        socket.emit("message_sent", msgWithId);
+        socket.emit("message_sent", formatted);
 
       } catch (error) {
         console.error("Socket error (send_message):", error.message);

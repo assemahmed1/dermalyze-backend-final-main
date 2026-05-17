@@ -3,6 +3,12 @@ const router = express.Router();
 const protect = require("../middlewares/authMiddleware");
 const validateObjectId = require("../middlewares/validateObjectId");
 const chatController = require("../controllers/chatController");
+const multer = require("multer");
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+});
 
 router.use(protect); // All chat routes require authentication
 
@@ -63,6 +69,6 @@ router.get("/messages/:receiverId", validateObjectId("receiverId"), chatControll
  *       201:
  *         description: Message sent successfully
  */
-router.post("/send", chatController.sendMessage);
+router.post("/send", upload.single("file"), chatController.sendMessage);
 
 module.exports = router;
