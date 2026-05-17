@@ -47,11 +47,17 @@ const socketHandler = (io) => {
           content,
         });
 
+        const plainMsg = message.get({ plain: true });
+        const msgWithId = {
+          ...plainMsg,
+          _id: plainMsg.id, // For MongoDB backward compatibility
+        };
+
         // Emit to receiver's personal room
-        io.to(String(receiverId)).emit("receive_message", message);
+        io.to(String(receiverId)).emit("receive_message", msgWithId);
         
         // Also emit back to sender for confirmation
-        socket.emit("message_sent", message);
+        socket.emit("message_sent", msgWithId);
 
       } catch (error) {
         console.error("Socket error (send_message):", error.message);

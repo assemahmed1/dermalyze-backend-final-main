@@ -93,7 +93,15 @@ exports.getMessages = async (req, res, next) => {
       order: [["createdAt", "ASC"]],
     });
 
-    res.json(messages);
+    const formattedMessages = messages.map((msg) => {
+      const plainMsg = msg.get({ plain: true });
+      return {
+        ...plainMsg,
+        _id: plainMsg.id, // For MongoDB backward compatibility
+      };
+    });
+
+    res.json(formattedMessages);
   } catch (error) {
     next(error);
   }
@@ -111,8 +119,12 @@ exports.sendMessage = async (req, res, next) => {
     }
 
     const message = await Message.create({ senderId, receiverId, content });
+    const plainMsg = message.get({ plain: true });
 
-    res.status(201).json(message);
+    res.status(201).json({
+      ...plainMsg,
+      _id: plainMsg.id, // For MongoDB backward compatibility
+    });
   } catch (error) {
     next(error);
   }
