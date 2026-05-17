@@ -22,20 +22,24 @@ if (redisUrl) {
   redisClient = redis.createClient();
 }
 
+let hasLoggedError = false;
+
 redisClient.on("connect", () => {
   console.log("🚀 Connecting to Redis...");
 });
 
 redisClient.on("ready", () => {
   isRedisConnected = true;
+  hasLoggedError = false;
   console.log("✅ Redis client connected and ready.");
 });
 
 redisClient.on("error", (err) => {
   isRedisConnected = false;
-  // Silent warning to avoid cluttering local console if Redis is offline
-  if (process.env.NODE_ENV === "production") {
+  // Log only once to avoid spamming the console
+  if (!hasLoggedError) {
     console.warn("⚠️ Redis Client Error:", err.message);
+    hasLoggedError = true;
   }
 });
 
