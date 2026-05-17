@@ -58,7 +58,8 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === "production" ? process.env.FRONTEND_URL : "*"
 }));
-app.use(express.json({ limit: "10kb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use((req, res, next) => {
   if (req.query) {

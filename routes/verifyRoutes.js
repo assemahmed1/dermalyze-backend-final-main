@@ -5,7 +5,10 @@ const { verifyIdentity } = require("../controllers/verifyController");
 const protect = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+});
 
 /**
  * @swagger
