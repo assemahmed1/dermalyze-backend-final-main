@@ -28,11 +28,29 @@ exports.linkDoctor = async (req, res, next) => {
 // Get doctor's patients
 exports.getPatients = async (req, res, next) => {
   try {
-    const patients = await Patient.findAll({
-      where: { doctorId: req.user.id },
-      order: [["createdAt", "DESC"]],
+    const doctorId = req.user.id;
+
+    // Find all users (role patient) belonging to this doctor
+    const patients = await User.findAll({
+      where: {
+        doctorId: doctorId,
+        role: "patient"
+      },
+      order: [["createdAt", "DESC"]]
     });
-    res.json(patients);
+
+    const formattedPatients = patients.map(p => ({
+      id: p.id.toString(),
+      name: p.name,
+      email: p.email,
+      phone: p.phone || "",
+      diagnosis: p.diagnosis || null,
+      isCritical: p.isCritical || false
+    }));
+
+    res.json({
+      patients: formattedPatients
+    });
   } catch (error) {
     next(error);
   }

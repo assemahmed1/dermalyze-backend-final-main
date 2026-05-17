@@ -42,6 +42,30 @@ const User = sequelize.define(
       allowNull: true,
       references: { model: "Users", key: "id" },
     },
+    phone: {
+      type: DataTypes.STRING,
+      defaultValue: "",
+    },
+    nationalId: {
+      type: DataTypes.STRING,
+      defaultValue: "",
+    },
+    dateOfBirth: {
+      type: DataTypes.STRING,
+      defaultValue: "",
+    },
+    diagnosis: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    allergies: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    isCritical: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     fcmToken: {
       type: DataTypes.STRING,
       defaultValue: null,

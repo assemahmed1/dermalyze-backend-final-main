@@ -69,14 +69,12 @@ exports.register = async (req, res) => {
 
     // 👤 Patient
     else {
-      // Doctor code is required for patient registration
-      if (!doctorCode) {
-        return res.status(400).json({ message: "Doctor code is required to register as a patient" });
-      }
-
-      const doctor = await User.findOne({ where: { doctorCode, role: "doctor" } });
-      if (!doctor) {
-        return res.status(400).json({ message: "Invalid doctor code. Please ask your doctor for the correct code." });
+      let doctor = null;
+      if (doctorCode) {
+        doctor = await User.findOne({ where: { doctorCode, role: "doctor" } });
+        if (!doctor) {
+          return res.status(400).json({ message: "Invalid doctor code. Please ask your doctor for the correct code." });
+        }
       }
 
       user = await User.create({
@@ -84,24 +82,38 @@ exports.register = async (req, res) => {
         email,
         password,
         role: "patient",
-        doctorId: doctor.id
+        doctorId: doctor ? doctor.id : null,
+        phone: req.body.phone || "",
+        nationalId: req.body.nationalId || "",
+        dateOfBirth: req.body.dateOfBirth || "",
+        diagnosis: req.body.diagnosis || null,
+        allergies: req.body.allergies || null
       });
+
+      if (doctor) {
+        if (typeof doctor.addPatient === 'function') {
+          await doctor.addPatient(user);
+        }
+      }
     }
 
     const token = generateToken(user.id, user.role);
 
     res.status(201).json({
-      message: role === "doctor"
-        ? "Doctor registered successfully. Your account is pending admin verification."
-        : "User registered successfully",
+      message: "Success",
       token,
       user: {
-        _id: user.id,
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
-        doctorCode: user.doctorCode || null,
-        verificationStatus: user.verificationStatus
+        phone: user.phone || "",
+        nationalId: user.nationalId || "",
+        dateOfBirth: user.dateOfBirth || "",
+        doctorCode: user.doctorCode || "",
+        doctorId: user.doctorId ? user.doctorId.toString() : "",
+        diagnosis: user.diagnosis || null,
+        allergies: user.allergies || null
       }
     });
 
@@ -212,14 +224,20 @@ exports.login = async (req, res) => {
     const token = generateToken(user.id, user.role);
 
     res.json({
-      message: "Login successful",
+      message: "Success",
       token,
       user: {
-        _id: user.id,
+        id: user.id.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
-        doctorCode: user.doctorCode || null
+        phone: user.phone || "",
+        nationalId: user.nationalId || "",
+        dateOfBirth: user.dateOfBirth || "",
+        doctorCode: user.doctorCode || "",
+        doctorId: user.doctorId ? user.doctorId.toString() : "",
+        diagnosis: user.diagnosis || null,
+        allergies: user.allergies || null
       }
     });
 
