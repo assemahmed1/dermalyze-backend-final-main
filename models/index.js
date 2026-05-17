@@ -16,6 +16,15 @@ const Message = require("./Message");
 const Notification = require("./Notification");
 const ClinicalDisease = require("./ClinicalDisease");
 const ClinicalMedication = require("./ClinicalMedication");
+const Disease = require("./Disease");
+const DiseaseReport = require("./DiseaseReport");
+const SmartPatient = require("./SmartPatient");
+const SmartDoctor = require("./SmartDoctor");
+const SmartDisease = require("./SmartDisease");
+const SmartTreatment = require("./SmartTreatment");
+const SmartPatientDisease = require("./SmartPatientDisease");
+const SmartImprovementRate = require("./SmartImprovementRate");
+const SmartDoctorTreatment = require("./SmartDoctorTreatment");
 
 // ========================
 // Associations
@@ -24,6 +33,46 @@ const ClinicalMedication = require("./ClinicalMedication");
 // User self-reference (patient → doctor)
 User.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
 User.hasMany(User, { as: "patients", foreignKey: "doctorId" });
+
+// Disease & DiseaseReport relationships
+Disease.hasOne(DiseaseReport, { foreignKey: "diseaseId", as: "report", onDelete: "CASCADE" });
+DiseaseReport.belongsTo(Disease, { foreignKey: "diseaseId", as: "disease" });
+
+// Smart History relationships
+SmartPatient.belongsToMany(SmartDisease, {
+  through: SmartPatientDisease,
+  foreignKey: "patient_id",
+  otherKey: "disease_id",
+  as: "diseases"
+});
+SmartDisease.belongsToMany(SmartPatient, {
+  through: SmartPatientDisease,
+  foreignKey: "disease_id",
+  otherKey: "patient_id",
+  as: "patients"
+});
+
+SmartPatient.hasMany(SmartImprovementRate, { foreignKey: "patient_id", as: "improvementRates" });
+SmartImprovementRate.belongsTo(SmartPatient, { foreignKey: "patient_id", as: "patient" });
+
+SmartDoctor.hasMany(SmartImprovementRate, { foreignKey: "doctor_id", as: "improvementRates" });
+SmartImprovementRate.belongsTo(SmartDoctor, { foreignKey: "doctor_id", as: "doctor" });
+
+SmartTreatment.hasMany(SmartImprovementRate, { foreignKey: "treatment_id", as: "improvementRates" });
+SmartImprovementRate.belongsTo(SmartTreatment, { foreignKey: "treatment_id", as: "treatment" });
+
+SmartDoctor.belongsToMany(SmartTreatment, {
+  through: SmartDoctorTreatment,
+  foreignKey: "doctor_id",
+  otherKey: "treatment_id",
+  as: "treatments"
+});
+SmartTreatment.belongsToMany(SmartDoctor, {
+  through: SmartDoctorTreatment,
+  foreignKey: "treatment_id",
+  otherKey: "doctor_id",
+  as: "doctors"
+});
 
 // Doctor → Patients (clinical records)
 User.hasMany(Patient, { foreignKey: "doctorId" });
@@ -84,4 +133,13 @@ module.exports = {
   Notification,
   ClinicalDisease,
   ClinicalMedication,
+  Disease,
+  DiseaseReport,
+  SmartPatient,
+  SmartDoctor,
+  SmartDisease,
+  SmartTreatment,
+  SmartPatientDisease,
+  SmartImprovementRate,
+  SmartDoctorTreatment,
 };

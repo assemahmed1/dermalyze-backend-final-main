@@ -1,95 +1,52 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { Op } = require('sequelize');
-const Patient = require('../models/Patient');
-const Medication = require('../models/Medication');
-const { sequelize } = require('../config/db');
+const { getSmartPatients, getSmartTreatments } = require("./smartHistory.service");
 
-// GET /smart-history/patients?doctor_id=1&disease=Eczema
-router.get('/patients', async (req, res) => {
+// GET /api/smart-history/patients?doctor_id=1&disease=Eczema
+router.get("/patients", async (req, res) => {
+  const doctorId = req.query.doctor_id;
+  const disease = req.query.disease;
+
+  if (!doctorId || !disease) {
+    return res.status(400).json({
+      success: false,
+      error: "Query parameters 'doctor_id' and 'disease' are required."
+    });
+  }
+
   try {
-    const doctor_id = req.query.doctor_id;
-    const disease = req.query.disease;
-
-    if (!doctor_id || !disease) {
-      return res.status(400).json({ status: 'error', message: 'doctor_id and disease are required' });
-    }
-
-    // In our schema, patients have a direct 'diagnosis' string field and a 'doctorId'
-    const patients = await Patient.findAll({
-      where: {
-        doctorId: doctor_id,
-        diagnosis: {
-          [Op.like]: `%${disease}%`
-        }
-      },
-      attributes: ['id', 'name', 'age', 'gender', 'nationalId', 'phone', 'address', 'diagnosis', 'status', 'recoveryProgress', 'createdAt']
+    const patients = await getSmartPatients(doctorId, disease);
+    return res.status(200).json(patients);
+  } catch (err) {
+    console.error("Error in GET /smart-history/patients:", err.message);
+    return res.status(500).json({
+      success: false,
+      error: "An internal database error occurred while fetching patients."
     });
-
-    res.json({
-      status: 'success',
-      doctor_id,
-      disease,
-      results_count: patients.length,
-      patients
-    });
-
-  } catch (error) {
-    console.error('[SMART HISTORY PATIENTS ERROR]', error);
-    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// GET /smart-history/treatments?doctor_id=1&disease=Eczema
-router.get('/treatments', async (req, res) => {
+// GET /api/smart-history/treatments?doctor_id=1&disease=Eczema
+router.get("/treatments", async (req, res) => {
+  const doctorId = req.query.doctor_id;
+  const disease = req.query.disease;
+
+  if (!doctorId || !disease) {
+    return res.status(400).json({
+      success: false,
+      error: "Query parameters 'doctor_id' and 'disease' are required."
+    });
+  }
+
   try {
-    const doctor_id = req.query.doctor_id;
-    const disease = req.query.disease;
-
-    if (!doctor_id || !disease) {
-      return res.status(400).json({ status: 'error', message: 'doctor_id and disease are required' });
-    }
-
-    // In our schema:
-    // - Medications table acts as Treatments. It has name, dosage, frequency (acts as usage)
-    // - Improvement Rate is stored in Patient.recoveryProgress
-    // - We join Medication with Patient to filter by disease and calculate average recovery rate
-    const treatments = await Medication.findAll({
-      where: {
-        doctorId: doctor_id
-      },
-      include: [{
-        model: Patient,
-        as: 'patient',
-        where: {
-          diagnosis: {
-            [Op.like]: `%${disease}%`
-          }
-        },
-        attributes: [] // Don't return patient attributes, just use for joining & aggregating
-      }],
-      attributes: [
-        'name',
-        'dosage',
-        ['frequency', 'usage'],
-        [sequelize.fn('AVG', sequelize.col('patient.recoveryProgress')), 'average_rate'],
-        [sequelize.fn('COUNT', sequelize.col('patient.id')), 'total_ratings']
-      ],
-      group: ['name', 'dosage', 'frequency'],
-      order: [[sequelize.literal('average_rate'), 'DESC']]
+    const treatments = await getSmartTreatments(doctorId, disease);
+    return res.status(200).json(treatments);
+  } catch (err) {
+    console.error("Error in GET /smart-history/treatments:", err.message);
+    return res.status(500).json({
+      success: false,
+      error: "An internal database error occurred while fetching treatments."
     });
-
-    res.json({
-      status: 'success',
-      doctor_id,
-      disease,
-      results_count: treatments.length,
-      treatments
-    });
-
-  } catch (error) {
-    console.error('[SMART HISTORY TREATMENTS ERROR]', error);
-    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
