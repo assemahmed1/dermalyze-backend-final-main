@@ -13,7 +13,7 @@ const ADMIN_NAME = process.env.ADMIN_NAME || "Admin";
 async function createAdmin() {
   try {
     await connectDB();
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
 
     const existing = await User.findOne({ where: { email: ADMIN_EMAIL } });
 

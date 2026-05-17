@@ -82,7 +82,7 @@ const diseases = [
 const seedDiseases = async () => {
   try {
     await connectDB();
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
 
     let inserted = 0;
     for (const d of diseases) {

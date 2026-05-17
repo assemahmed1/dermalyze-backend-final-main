@@ -10,7 +10,7 @@ const ClinicalDisease = require("../models/ClinicalDisease");
 const seedData = async () => {
   try {
     await connectDB();
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
 
     // Clear existing data
     await ClinicalMedication.destroy({ where: {} });

@@ -1,8 +1,9 @@
-const { connectDB, sequelize } = require('./config/db');
-require('./models');
-const User = require('./models/User');
-const Patient = require('./models/Patient');
-const Medication = require('./models/Medication');
+require("dotenv").config();
+const { connectDB, sequelize } = require('../config/db');
+require('../models');
+const User = require('../models/User');
+const Patient = require('../models/Patient');
+const Medication = require('../models/Medication');
 
 (async () => {
   await connectDB();
