@@ -2,6 +2,7 @@ const { Op } = require("sequelize");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary");
+const { sendPushNotification } = require("../services/notificationService");
 
 // Helper to format messages to return exact required fields
 const formatMessage = (msg) => {
@@ -120,12 +121,16 @@ exports.getConversations = async (req, res, next) => {
   }
 };
 
-// @desc    Get message history with a specific user + Mark as read
-// @route   GET /api/chat/messages/:receiverId
+// @desc    Get message history with a specific user (supports pagination)
+// @route   GET /api/chat/messages/:receiverId?page=1&limit=50
 exports.getMessages = async (req, res, next) => {
   try {
     const { receiverId } = req.params;
     const myId = req.user.id;
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const offset = (page - 1) * limit;
 
     // 1. Mark all unread messages from this partner to me as read
     await Message.update(
@@ -133,7 +138,14 @@ exports.getMessages = async (req, res, next) => {
       { where: { senderId: receiverId, receiverId: myId, isRead: false } }
     );
 
-    // 2. Fetch history
+    // Emit read receipt Socket event to the partner in real-time
+    const { getIO } = require("../services/socketHandler");
+    const io = getIO();
+    if (io) {
+      io.to(String(receiverId)).emit("messages_read", { readerId: myId });
+    }
+
+    // 2. Fetch history sorted latest first for correct offset pagination, and reverse for ascending chronological UI render
     const messages = await Message.findAll({
       where: {
         [Op.or]: [
@@ -141,12 +153,43 @@ exports.getMessages = async (req, res, next) => {
           { senderId: receiverId, receiverId: myId },
         ],
       },
-      order: [["createdAt", "ASC"]],
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset
     });
 
-    const formattedMessages = messages.map(formatMessage);
+    const formattedMessages = messages.reverse().map(formatMessage);
 
     res.json(formattedMessages);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Mark incoming messages from partner as read
+// @route   PUT /api/chat/messages/read
+exports.markAsRead = async (req, res, next) => {
+  try {
+    const myId = req.user.id;
+    const { senderId } = req.body;
+
+    if (!senderId) {
+      return res.status(400).json({ success: false, message: "senderId is required" });
+    }
+
+    await Message.update(
+      { isRead: true },
+      { where: { senderId, receiverId: myId, isRead: false } }
+    );
+
+    // Emit real-time read receipt to the sender
+    const { getIO } = require("../services/socketHandler");
+    const io = getIO();
+    if (io) {
+      io.to(String(senderId)).emit("messages_read", { readerId: myId });
+    }
+
+    res.json({ success: true, message: "Messages marked as read" });
   } catch (error) {
     next(error);
   }
@@ -172,7 +215,6 @@ exports.sendMessage = async (req, res, next) => {
         const uploadResult = await uploadToCloudinary(req.file.buffer, "dermalyze/chat");
         mediaUrl = uploadResult.secure_url;
 
-        // Determine final type if not provided or text
         if (!["image", "audio", "file"].includes(finalType)) {
           if (req.file.mimetype.startsWith("image/")) {
             finalType = "image";
@@ -187,7 +229,6 @@ exports.sendMessage = async (req, res, next) => {
         return res.status(500).json({ message: `Media upload failed: ${uploadError.message}` });
       }
     } else {
-      // Text message validation
       if (!content) {
         return res.status(400).json({ message: "Content is required for text messages" });
       }
@@ -205,11 +246,34 @@ exports.sendMessage = async (req, res, next) => {
 
     const formatted = formatMessage(message);
 
+    // Trigger background FCM push notification
+    const [sender, receiver] = await Promise.all([
+      User.findByPk(senderId),
+      User.findByPk(receiverId)
+    ]);
+
+    if (receiver && receiver.fcmToken && receiver.pushNotifications !== false) {
+      const bodyText = finalType === "text"
+        ? (content || "")
+        : `[${finalType.charAt(0).toUpperCase() + finalType.slice(1)}]`;
+
+      sendPushNotification(receiver.fcmToken, {
+        title: sender ? sender.name : "New Message",
+        body: bodyText,
+        data: {
+          type: "chat",
+          senderId: senderId.toString(),
+        }
+      }).catch((err) => {
+        console.error("[FCM NOTIFICATION ERROR]", err.message);
+      });
+    }
+
     res.status(201).json(formatted);
   } catch (error) {
     next(error);
   }
 };
 
-// Export the formatMessage helper for socketHandler or other controllers to use
+// Export formatMessage helper
 exports.formatMessage = formatMessage;

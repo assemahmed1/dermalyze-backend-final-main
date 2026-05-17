@@ -21,16 +21,25 @@ const Analysis = sequelize.define(
     },
     imageUrl: {
       type: DataTypes.STRING(1024),
-      allowNull: false,
+      allowNull: true,
     },
     result: {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.ENUM("processing", "completed", "failed"),
+      defaultValue: "processing",
+      allowNull: false,
+    },
   },
   {
     tableName: "Analyses",
     timestamps: true,
+    indexes: [
+      { fields: ["patientId"] },
+      { fields: ["doctorId"] },
+    ],
   }
 );
 

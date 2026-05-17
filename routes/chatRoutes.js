@@ -35,7 +35,7 @@ router.get("/conversations", chatController.getConversations);
  * @swagger
  * /chat/messages/{receiverId}:
  *   get:
- *     summary: Get message history with a user and mark as read
+ *     summary: Get message history with a user (supports pagination)
  *     tags: [Chat]
  *     parameters:
  *       - in: path
@@ -43,11 +43,44 @@ router.get("/conversations", chatController.getConversations);
  *         required: true
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Number of messages per page
  *     responses:
  *       200:
  *         description: Array of message objects
  */
 router.get("/messages/:receiverId", validateObjectId("receiverId"), chatController.getMessages);
+
+/**
+ * @swagger
+ * /chat/messages/read:
+ *   put:
+ *     summary: Mark incoming messages from partner as read
+ *     tags: [Chat]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [senderId]
+ *             properties:
+ *               senderId: { type: string }
+ *     responses:
+ *       200:
+ *         description: Messages marked as read successfully
+ */
+router.put("/messages/read", chatController.markAsRead);
 
 /**
  * @swagger

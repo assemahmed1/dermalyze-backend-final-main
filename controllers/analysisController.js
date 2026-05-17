@@ -1,59 +1,100 @@
 const Analysis = require("../models/Analysis");
 const Patient = require("../models/Patient");
-const cloudinary = require("../config/cloudinary");
-
-function uploadToCloudinary(buffer) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: "dermalyze/analyses", transformation: [{ width: 1024, height: 1024, crop: "limit" }] },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
-    );
-    stream.end(buffer);
-  });
-}
-
-async function analyzeSkin(imageBuffer) {
-  try {
-    const token = process.env.HF_API_TOKEN;
-    if (!token) return "Analysis error: API configuration missing";
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/Anwarkh1/Skin_Cancer-Image_Classification",
-      { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/octet-stream" }, body: imageBuffer }
-    );
-    if (!response.ok) {
-      if (response.status === 401) return "Analysis error: Invalid API token";
-      if (response.status === 503) return "Analysis error: Model loading, please wait...";
-      return `Analysis error (${response.status})`;
-    }
-    const data = await response.json();
-    if (Array.isArray(data) && data.length > 0) {
-      const top = data[0];
-      return `${top.label} (${(top.score * 100).toFixed(1)}% confidence)`;
-    }
-    return "Unable to analyze image";
-  } catch (error) {
-    return "Analysis service unavailable";
-  }
-}
+const { Worker } = require("worker_threads");
+const path = require("path");
 
 exports.createAnalysis = async (req, res) => {
   try {
     const patientId = req.params.patientId;
     if (!req.file) return res.status(400).json({ message: "Image is required" });
+    
     const patient = await Patient.findByPk(patientId);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
-    const [uploadResult, aiResult] = await Promise.all([
-      uploadToCloudinary(req.file.buffer),
-      analyzeSkin(req.file.buffer)
-    ]);
+
+    // 1. Save to DB with status "processing" and null imageUrl initially
     const analysis = await Analysis.create({
-      doctorId: req.user.id, patientId, imageUrl: uploadResult.secure_url, result: aiResult
+      doctorId: req.user.id,
+      patientId,
+      imageUrl: null,
+      result: "Analysis in progress...",
+      status: "processing"
     });
-    res.status(201).json({ message: "Analysis added to patient file", analysis });
+
+    // 2. Return HTTP response immediately without blocking
+    res.status(201).json({
+      success: true,
+      message: "Analysis started in background",
+      analysis
+    });
+
+    // 3. Spawn background worker to perform Cloudinary upload and Hugging Face analysis
+    const worker = new Worker(path.join(__dirname, "../services/analysisWorker.js"), {
+      workerData: {
+        imageBuffer: req.file.buffer
+      }
+    });
+
+    worker.on("message", async (message) => {
+      try {
+        if (message.success) {
+          // Update DB with results and permanent URL
+          analysis.imageUrl = message.imageUrl;
+          analysis.result = message.result;
+          analysis.status = "completed";
+          await analysis.save();
+
+          // Emit real-time Socket.io event to Doctor and Patient rooms
+          const { getIO } = require("../services/socketHandler");
+          const io = getIO();
+          if (io) {
+            const payload = {
+              _id: analysis.id.toString(),
+              id: analysis.id.toString(),
+              patientId: analysis.patientId.toString(),
+              doctorId: analysis.doctorId.toString(),
+              imageUrl: analysis.imageUrl,
+              result: analysis.result,
+              status: "completed",
+              createdAt: analysis.createdAt
+            };
+            io.to(String(analysis.doctorId)).emit("analysis_completed", payload);
+            io.to(String(analysis.patientId)).emit("analysis_completed", payload);
+            console.log(`📡 Emitted analysis_completed Socket event for Analysis ID ${analysis.id}`);
+          }
+        } else {
+          analysis.result = `Analysis failed: ${message.error}`;
+          analysis.status = "failed";
+          await analysis.save();
+
+          // Emit failure event
+          const { getIO } = require("../services/socketHandler");
+          const io = getIO();
+          if (io) {
+            io.to(String(analysis.doctorId)).emit("analysis_failed", {
+              id: analysis.id.toString(),
+              patientId: analysis.patientId.toString(),
+              error: message.error
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[MASTER PROCESS WORKER MESSAGE ERROR]", err);
+      }
+    });
+
+    worker.on("error", async (err) => {
+      try {
+        console.error("[MASTER PROCESS WORKER THREAD ERROR]", err);
+        analysis.result = `Analysis thread crash: ${err.message}`;
+        analysis.status = "failed";
+        await analysis.save();
+      } catch (dbErr) {
+        console.error("Error updating failed state after thread crash:", dbErr);
+      }
+    });
+
   } catch (error) {
+    console.error("[CREATE ANALYSIS CONTROLLER ERROR]", error);
     res.status(500).json({ message: error.message });
   }
 };

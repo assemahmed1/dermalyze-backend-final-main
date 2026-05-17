@@ -3,6 +3,7 @@ const router = express.Router();
 const { google } = require("googleapis");
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const cacheMiddleware = require("../middlewares/cacheMiddleware");
 
 const getAuthClient = () =>
   new google.auth.GoogleAuth({
@@ -110,7 +111,7 @@ router.get("/medicines/match", async (req, res) => {
  *     summary: Get all medicines from the guide
  *     tags: [Medicines]
  */
-router.get("/medicines/all", async (req, res) => {
+router.get("/medicines/all", cacheMiddleware(3600), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;

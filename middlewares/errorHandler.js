@@ -4,42 +4,42 @@
 const errorHandler = (err, req, res, next) => {
   console.error(`[ERROR] ${err.message}`);
 
+  let status = err.status || 500;
+  let message = err.message || "Internal server error";
+
   // Sequelize unique constraint error (e.g. duplicate email)
   if (err.name === "SequelizeUniqueConstraintError") {
     const field = err.errors?.[0]?.path || "field";
-    return res.status(400).json({
-      message: `${field} already exists`
-    });
+    status = 400;
+    message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
   }
 
   // Sequelize validation error
-  if (err.name === "SequelizeValidationError") {
-    const messages = err.errors.map((e) => e.message);
-    return res.status(400).json({
-      message: "Validation error",
-      errors: messages
-    });
+  else if (err.name === "SequelizeValidationError") {
+    status = 400;
+    message = err.errors.map((e) => e.message).join(", ");
   }
 
-  // Sequelize database error (e.g. bad column, syntax)
-  if (err.name === "SequelizeDatabaseError") {
-    return res.status(400).json({
-      message: "Database error"
-    });
+  // Sequelize database error (e.g. bad column, syntax) — never expose raw DB errors
+  else if (err.name === "SequelizeDatabaseError") {
+    status = 400;
+    message = "Database service encountered an error";
   }
 
   // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    return res.status(401).json({ message: "Invalid token" });
+  else if (err.name === "JsonWebTokenError") {
+    status = 401;
+    message = "Invalid authentication token";
   }
 
-  if (err.name === "TokenExpiredError") {
-    return res.status(401).json({ message: "Token expired" });
+  else if (err.name === "TokenExpiredError") {
+    status = 401;
+    message = "Authentication token has expired";
   }
 
-  // Default
-  res.status(err.status || 500).json({
-    message: err.message || "Internal server error"
+  res.status(status).json({
+    success: false,
+    message
   });
 };
 

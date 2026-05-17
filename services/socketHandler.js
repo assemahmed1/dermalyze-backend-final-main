@@ -1,8 +1,13 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Message = require("../models/Message");
+const { sendPushNotification } = require("./notificationService");
+
+let ioInstance = null;
 
 const socketHandler = (io) => {
+  ioInstance = io;
+
   // Authentication Middleware for Socket.io
   io.use(async (socket, next) => {
     try {
@@ -64,6 +69,25 @@ const socketHandler = (io) => {
         // Also emit back to sender for confirmation
         socket.emit("message_sent", formatted);
 
+        // Trigger background FCM push notification
+        const receiver = await User.findByPk(receiverId);
+        if (receiver && receiver.fcmToken && receiver.pushNotifications !== false) {
+          const bodyText = finalType === "text"
+            ? (content || "")
+            : `[${finalType.charAt(0).toUpperCase() + finalType.slice(1)}]`;
+
+          sendPushNotification(receiver.fcmToken, {
+            title: socket.user.name,
+            body: bodyText,
+            data: {
+              type: "chat",
+              senderId: userId.toString(),
+            }
+          }).catch((err) => {
+            console.error("[FCM NOTIFICATION ERROR]", err.message);
+          });
+        }
+
       } catch (error) {
         console.error("Socket error (send_message):", error.message);
         socket.emit("error", { message: "Failed to send message" });
@@ -87,4 +111,7 @@ const socketHandler = (io) => {
   });
 };
 
+const getIO = () => ioInstance;
+
 module.exports = socketHandler;
+module.exports.getIO = getIO;

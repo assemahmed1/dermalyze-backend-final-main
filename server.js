@@ -1,6 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 const { connectDB, sequelize } = require("./config/db");
@@ -55,6 +57,8 @@ const io = new Server(server, {
 socketHandler(io);
 
 app.use(helmet());
+app.use(cookieParser());
+app.use(morgan("dev"));
 app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [

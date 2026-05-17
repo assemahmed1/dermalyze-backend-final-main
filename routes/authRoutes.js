@@ -1,8 +1,17 @@
 const express = require("express");
 const router = express.Router();
-const { register, login } = require("../controllers/authController");
+const { register, login, refresh, logout } = require("../controllers/authController");
 const { registerRules, loginRules, validate } = require("../middlewares/validationMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
+const rateLimit = require("express-rate-limit");
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { success: false, message: "Too many login/registration attempts, please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -54,11 +63,18 @@ const upload = require("../middlewares/uploadMiddleware");
  *       400:
  *         description: Invalid data or missing/wrong doctor code
  */
-router.post("/register", upload.fields([
-  { name: "idCardFront", maxCount: 1 },
-  { name: "idCardBack", maxCount: 1 },
-  { name: "selfie", maxCount: 1 }
-]), registerRules, validate, register);
+router.post(
+  "/register",
+  authLimiter,
+  upload.fields([
+    { name: "idCardFront", maxCount: 1 },
+    { name: "idCardBack", maxCount: 1 },
+    { name: "selfie", maxCount: 1 }
+  ]),
+  registerRules,
+  validate,
+  register
+);
 
 /**
  * @swagger
@@ -87,6 +103,24 @@ router.post("/register", upload.fields([
  *       400:
  *         description: Invalid data
  */
-router.post("/login", loginRules, validate, login);
+router.post("/login", authLimiter, loginRules, validate, login);
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh Access Token
+ *     tags: [Auth]
+ */
+router.post("/refresh", refresh);
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags: [Auth]
+ */
+router.post("/logout", logout);
 
 module.exports = router;

@@ -59,6 +59,9 @@ const Patient = sequelize.define(
   {
     tableName: "Patients",
     timestamps: true,
+    indexes: [
+      { fields: ["doctorId"] }
+    ],
   }
 );
 
