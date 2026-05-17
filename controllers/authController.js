@@ -221,6 +221,19 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
+    // Block pending or rejected doctors from logging in
+    if (user.role === "doctor") {
+      if (user.verificationStatus === "pending") {
+        return res.status(403).json({ message: "Your account is pending administrator verification." });
+      }
+      if (user.verificationStatus === "rejected") {
+        return res.status(403).json({ 
+          message: "Your professional credentials verification request has been rejected.",
+          note: user.verificationNote
+        });
+      }
+    }
+
     const token = generateToken(user.id, user.role);
 
     res.json({
