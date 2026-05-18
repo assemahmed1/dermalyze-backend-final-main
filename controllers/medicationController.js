@@ -1,11 +1,12 @@
 const Medication = require("../models/Medication");
 const Patient = require("../models/Patient");
+const { getOrCreatePatient } = require("../utils/patientUtils");
 
 exports.addMedication = async (req, res, next) => {
   try {
     const { patientId } = req.params;
     const { name, dosage, frequency, notes } = req.body;
-    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
+    const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     const medication = await Medication.create({ patientId, doctorId: req.user.id, name, dosage, frequency, notes });
     res.status(201).json({ message: "Medication added", medication });
@@ -15,7 +16,7 @@ exports.addMedication = async (req, res, next) => {
 exports.getPatientMedications = async (req, res, next) => {
   try {
     const { patientId } = req.params;
-    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
+    const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     const medications = await Medication.findAll({ where: { patientId }, order: [["createdAt", "DESC"]] });
     res.json(medications);

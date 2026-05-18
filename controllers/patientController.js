@@ -1,4 +1,5 @@
 const Patient = require("../models/Patient");
+const { getOrCreatePatient } = require("../utils/patientUtils");
 
 const createPatient = async (req, res) => {
   try {
@@ -34,13 +35,7 @@ const getPatients = async (req, res, next) => {
 
 const getPatientById = async (req, res, next) => {
   try {
-    // IDOR Fix: scope lookup to both ID and doctor
-    const patient = await Patient.findOne({
-      where: {
-        id: req.params.id,
-        doctorId: req.user.id,
-      },
-    });
+    const patient = await getOrCreatePatient(req.params.id, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     res.json(patient);
   } catch (error) {
@@ -57,15 +52,12 @@ const updatePatientStatus = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    // IDOR Fix: ensure patient belongs to this doctor
-    const [affectedRows] = await Patient.update(
-      { status },
-      { where: { id: req.params.id, doctorId: req.user.id } }
-    );
+    const patient = await getOrCreatePatient(req.params.id, req.user.id);
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
 
-    if (affectedRows === 0) return res.status(404).json({ message: "Patient not found" });
+    patient.status = status;
+    await patient.save();
 
-    const patient = await Patient.findByPk(req.params.id);
     res.json(patient);
   } catch (error) {
     next(error);
@@ -81,15 +73,12 @@ const updateRecoveryProgress = async (req, res, next) => {
       return res.status(400).json({ message: "Progress must be between 0 and 100" });
     }
 
-    // IDOR Fix: ensure patient belongs to this doctor
-    const [affectedRows] = await Patient.update(
-      { recoveryProgress: progress },
-      { where: { id: req.params.id, doctorId: req.user.id } }
-    );
+    const patient = await getOrCreatePatient(req.params.id, req.user.id);
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
 
-    if (affectedRows === 0) return res.status(404).json({ message: "Patient not found" });
+    patient.recoveryProgress = progress;
+    await patient.save();
 
-    const patient = await Patient.findByPk(req.params.id);
     res.json({ message: "Recovery progress updated", patient });
   } catch (error) {
     next(error);

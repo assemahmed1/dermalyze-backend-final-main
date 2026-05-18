@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Patient = require("../models/Patient");
+const { getOrCreatePatient } = require("../utils/patientUtils");
 const PatientReview = require("../models/PatientReview");
 const Analysis = require("../models/Analysis");
 const Notification = require("../models/Notification");
@@ -62,7 +63,7 @@ exports.getPatientAnalyses = async (req, res, next) => {
     const { id } = req.params;
 
     // IDOR Fix: Explicitly check if the patient exists and belongs to this doctor
-    const patient = await Patient.findOne({ where: { id, doctorId: req.user.id } });
+    const patient = await getOrCreatePatient(id, req.user.id);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
@@ -192,7 +193,7 @@ exports.addReview = async (req, res, next) => {
     const { review } = req.body;
 
     // Verify patient belongs to this doctor
-    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
+    const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
@@ -223,7 +224,7 @@ exports.getReviews = async (req, res, next) => {
   try {
     const { patientId } = req.params;
 
-    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
+    const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
@@ -246,7 +247,7 @@ exports.createAppointment = async (req, res, next) => {
     const { patientName, diagnosis, appointmentDate, appointmentTime } = req.body;
 
     // Verify patient belongs to doctor
-    const patient = await Patient.findOne({ where: { id: patientId, doctorId: req.user.id } });
+    const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }

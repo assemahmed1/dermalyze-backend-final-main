@@ -199,6 +199,9 @@ exports.markAsRead = async (req, res, next) => {
 // @route   POST /api/chat/send
 exports.sendMessage = async (req, res, next) => {
   try {
+    if (req.files && req.files.length > 0) {
+      req.file = req.files[0];
+    }
     const senderId = req.user.id;
     let { receiverId, content, type, durationMs } = req.body;
 

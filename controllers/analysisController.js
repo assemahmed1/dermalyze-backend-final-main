@@ -1,5 +1,6 @@
 const Analysis = require("../models/Analysis");
 const Patient = require("../models/Patient");
+const { getOrCreatePatient } = require("../utils/patientUtils");
 const { Worker } = require("worker_threads");
 const path = require("path");
 
@@ -8,7 +9,7 @@ exports.createAnalysis = async (req, res) => {
     const patientId = req.params.patientId;
     if (!req.file) return res.status(400).json({ message: "Image is required" });
     
-    const patient = await Patient.findByPk(patientId);
+    const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
 
     // 1. Save to DB with status "processing" and null imageUrl initially
