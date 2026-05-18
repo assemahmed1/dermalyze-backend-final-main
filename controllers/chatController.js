@@ -249,6 +249,15 @@ exports.sendMessage = async (req, res, next) => {
 
     const formatted = formatMessage(message);
 
+    // Emit real-time Socket.io events to receiver and sender (to prevent any sync/polling latency)
+    const { getIO } = require("../services/socketHandler");
+    const io = getIO();
+    if (io) {
+      io.to(String(receiverId)).emit("receive_message", formatted);
+      io.to(String(senderId)).emit("receive_message", formatted);
+      console.log(`📡 Emitted receive_message Socket event for message ID ${message.id} from HTTP POST`);
+    }
+
     // Trigger background FCM push notification
     const [sender, receiver] = await Promise.all([
       User.findByPk(senderId),

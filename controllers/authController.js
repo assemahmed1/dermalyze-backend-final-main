@@ -279,7 +279,12 @@ exports.login = async (req, res) => {
 // ================= REFRESH =================
 exports.refresh = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    let refreshToken = req.cookies?.refreshToken || req.body?.refreshToken || req.headers["x-refresh-token"];
+
+    if (!refreshToken && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      refreshToken = req.headers.authorization.split(" ")[1];
+    }
+
     if (!refreshToken) {
       return res.status(401).json({ success: false, message: "Refresh token not found" });
     }

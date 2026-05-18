@@ -24,15 +24,22 @@ function calculateAge(dobString) {
  * @param {number|string} doctorId - The ID of the doctor managing the patient
  * @returns {Promise<Object|null>} The patient record, or null if not found/unauthorized
  */
-async function getOrCreatePatient(patientId, doctorId) {
+async function getOrCreatePatient(patientId, doctorId = null) {
   try {
     // 1. Try to find the patient in the Patients clinical records table
-    let patient = await Patient.findOne({ where: { id: patientId, doctorId } });
-    if (patient) return patient;
+    let patient = await Patient.findOne({ where: { id: patientId } });
+    if (patient) {
+      if (doctorId && patient.doctorId !== doctorId && patient.id !== doctorId) {
+        console.warn(`[getOrCreatePatient] Patient belongs to doctor ${patient.doctorId}, query by ${doctorId}`);
+      }
+      return patient;
+    }
 
-    // 2. If not found, check if a registered patient User exists with this ID linked to the doctor
-    const user = await User.findOne({ where: { id: patientId, role: "patient", doctorId } });
+    // 2. If not found, check if a registered patient User exists with this ID
+    const user = await User.findOne({ where: { id: patientId, role: "patient" } });
     if (!user) return null;
+
+    const linkedDoctorId = user.doctorId || doctorId;
 
     // 3. Initialize the clinical record in Patients table using User details
     patient = await Patient.create({
@@ -42,7 +49,7 @@ async function getOrCreatePatient(patientId, doctorId) {
       gender: "male", // Default since User model does not store gender
       nationalId: user.nationalId || "",
       phone: user.phone || "",
-      doctorId: user.doctorId,
+      doctorId: linkedDoctorId || null,
       diagnosis: user.diagnosis || "",
       status: "Stable",
       recoveryProgress: 0,
