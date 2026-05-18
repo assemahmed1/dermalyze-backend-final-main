@@ -55,12 +55,19 @@ const Patient = sequelize.define(
       allowNull: true,
       references: { model: "Users", key: "id" },
     },
+    userId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      references: { model: "Users", key: "id" },
+      unique: true,
+    },
   },
   {
     tableName: "Patients",
     timestamps: true,
     indexes: [
-      { fields: ["doctorId"] }
+      { fields: ["doctorId"] },
+      { fields: ["userId"] }
     ],
   }
 );

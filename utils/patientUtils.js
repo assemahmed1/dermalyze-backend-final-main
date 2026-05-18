@@ -26,24 +26,43 @@ function calculateAge(dobString) {
  */
 async function getOrCreatePatient(patientId, doctorId = null) {
   try {
-    // 1. Try to find the patient in the Patients clinical records table
-    let patient = await Patient.findOne({ where: { id: patientId } });
+    // 1. Try to find by registered User ID (userId column)
+    let patient = await Patient.findOne({ where: { userId: patientId } });
     if (patient) {
-      if (doctorId && patient.doctorId !== doctorId && patient.id !== doctorId) {
+      if (doctorId && patient.doctorId !== doctorId && patient.userId !== doctorId) {
         console.warn(`[getOrCreatePatient] Patient belongs to doctor ${patient.doctorId}, query by ${doctorId}`);
       }
       return patient;
     }
 
-    // 2. If not found, check if a registered patient User exists with this ID
+    // 2. Fallback: Try to find by clinical primary key Patient ID (id column)
+    patient = await Patient.findOne({ where: { id: patientId } });
+    if (patient) {
+      if (doctorId && patient.doctorId !== doctorId && patient.id !== doctorId) {
+        console.warn(`[getOrCreatePatient] Patient belongs to doctor ${patient.doctorId}, query by ${doctorId}`);
+      }
+      
+      // Self-healing: If the patient record has no userId, check if we can populate it dynamically
+      if (!patient.userId) {
+        const user = await User.findOne({ where: { id: patientId, role: "patient" } });
+        if (user) {
+          patient.userId = user.id;
+          await patient.save();
+          console.log(`✨ Self-healed & migrated Patient record (ID: ${patient.id}) to map userId: ${user.id}`);
+        }
+      }
+      return patient;
+    }
+
+    // 3. If not found in Patients clinical record, check if a registered User exists with this ID
     const user = await User.findOne({ where: { id: patientId, role: "patient" } });
     if (!user) return null;
 
     const linkedDoctorId = user.doctorId || doctorId;
 
-    // 3. Initialize the clinical record in Patients table using User details
+    // 4. Initialize the clinical record in Patients table using User details
     patient = await Patient.create({
-      id: user.id, // Explicitly use User ID
+      userId: user.id, // Explicitly set User ID mapping
       name: user.name,
       age: calculateAge(user.dateOfBirth),
       gender: "male", // Default since User model does not store gender
@@ -55,7 +74,7 @@ async function getOrCreatePatient(patientId, doctorId = null) {
       recoveryProgress: 0,
     });
 
-    console.log(`✨ Dynamically initialized clinical Patient record for User ID: ${user.id}`);
+    console.log(`✨ Dynamically initialized clinical Patient record for User ID: ${user.id} (Patient ID: ${patient.id})`);
     return patient;
   } catch (error) {
     console.error(`[getOrCreatePatient ERROR] ${error.stack || error.message}`);

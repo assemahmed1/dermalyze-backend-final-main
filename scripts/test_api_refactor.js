@@ -1,9 +1,6 @@
 require("dotenv").config();
 const { connectDB, sequelize } = require("../config/db");
-const User = require("../models/User");
-const Patient = require("../models/Patient");
-const Medication = require("../models/Medication");
-const Analysis = require("../models/Analysis");
+const { User, Patient, Medication, Analysis } = require("../models/index");
 const { generateAccessToken, generateRefreshToken } = require("../utils/generateToken");
 const { getOrCreatePatient } = require("../utils/patientUtils");
 const jwt = require("jsonwebtoken");
@@ -12,6 +9,9 @@ async function runTests() {
   try {
     console.log("🚀 Starting API Refactor & Standardization Verification Tests...");
     await connectDB();
+    console.log("🔄 Synchronizing models with database schema (alter: true)...");
+    await sequelize.sync({ alter: true });
+    console.log("✅ Models successfully synced!");
 
     // 1. Verify JWT Extension (Access Token should be 30 days, Refresh should be 90 days)
     console.log("\n--- [TEST 1] Token Expiration Extensions ---");
@@ -62,8 +62,8 @@ async function runTests() {
     console.log(`Testing patient resolution for User ID: ${patientUser.id} and Doctor ID: ${doctor.id}`);
     const resolvedPatient = await getOrCreatePatient(patientUser.id, doctor.id);
     
-    if (resolvedPatient && resolvedPatient.id === patientUser.id) {
-      console.log(`✅ Successfully resolved patient record! Age: ${resolvedPatient.age}, Name: ${resolvedPatient.name}`);
+    if (resolvedPatient && resolvedPatient.userId === patientUser.id) {
+      console.log(`✅ Successfully resolved patient record! Age: ${resolvedPatient.age}, Name: ${resolvedPatient.name}, Clinical ID: ${resolvedPatient.id}, User ID Ref: ${resolvedPatient.userId}`);
     } else {
       throw new Error("❌ Patient resolution failed!");
     }
@@ -88,10 +88,34 @@ async function runTests() {
     };
     mapper("patientId", "id")(req, res, next);
 
+    // 4. Verify mock appointment creation with the resolved clinical ID
+    console.log("\n--- [TEST 4] Mock Appointment Foreign Key Resolution ---");
+    const Appointment = require("../models/Appointment");
+    
+    // Clean any prior mock appointments
+    await Appointment.destroy({ where: { patientId: resolvedPatient.id } });
+
+    const mockAppointment = await Appointment.create({
+      patientId: resolvedPatient.id,
+      doctorId: doctor.id,
+      patientName: resolvedPatient.name,
+      diagnosis: "Skin Rash",
+      appointmentDate: "2026-06-01",
+      appointmentTime: "10:30"
+    });
+
+    if (mockAppointment && mockAppointment.patientId === resolvedPatient.id) {
+      console.log(`✅ Successfully scheduled mock appointment with clinical patient ID reference!`);
+      // Clean up
+      await mockAppointment.destroy();
+    } else {
+      throw new Error("❌ Appointment scheduling using clinical patient ID failed!");
+    }
+
     console.log("\n🎉 All Verification Tests Passed Successfully!");
     process.exit(0);
   } catch (error) {
-    console.error("❌ Test suite encountered a failure:", error.message);
+    console.error("❌ Test suite encountered a failure:", error.stack || error.message);
     process.exit(1);
   }
 }

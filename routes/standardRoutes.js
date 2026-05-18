@@ -24,6 +24,9 @@ const {
   createAnalysis,
 } = require("../controllers/analysisController");
 
+const { createAppointment } = require("../controllers/doctorController");
+const { appointmentRules, validate } = require("../middlewares/validationMiddleware");
+
 // Helper middleware to map route parameters dynamically
 const mapParams = (from, to) => {
   return (req, res, next) => {
@@ -170,6 +173,31 @@ router.get(
       next(error);
     }
   }
+);
+
+// POST /api/patients/:patientId/appointments
+router.post(
+  "/patients/:patientId/appointments",
+  protect,
+  requireRole("doctor"),
+  requireVerifiedDoctor,
+  validateObjectId("patientId"),
+  appointmentRules,
+  validate,
+  createAppointment
+);
+
+// POST /api/patients/:id/appointments (Aliased mapped via User ID)
+router.post(
+  "/patients/:id/appointments",
+  protect,
+  requireRole("doctor"),
+  requireVerifiedDoctor,
+  validateObjectId("id"),
+  mapParams("id", "patientId"),
+  appointmentRules,
+  validate,
+  createAppointment
 );
 
 module.exports = router;

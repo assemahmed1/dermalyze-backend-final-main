@@ -8,7 +8,7 @@ exports.addMedication = async (req, res, next) => {
     const { name, dosage, frequency, notes } = req.body;
     const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
-    const medication = await Medication.create({ patientId, doctorId: req.user.id, name, dosage, frequency, notes });
+    const medication = await Medication.create({ patientId: patient.id, doctorId: req.user.id, name, dosage, frequency, notes });
     res.status(201).json({ message: "Medication added", medication });
   } catch (error) { next(error); }
 };
@@ -18,7 +18,7 @@ exports.getPatientMedications = async (req, res, next) => {
     const { patientId } = req.params;
     const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
-    const medications = await Medication.findAll({ where: { patientId }, order: [["createdAt", "DESC"]] });
+    const medications = await Medication.findAll({ where: { patientId: patient.id }, order: [["createdAt", "DESC"]] });
     res.json(medications);
   } catch (error) { next(error); }
 };

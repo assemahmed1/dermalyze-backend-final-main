@@ -15,7 +15,7 @@ exports.createAnalysis = async (req, res) => {
     // 1. Save to DB with status "processing" and null imageUrl initially
     const analysis = await Analysis.create({
       doctorId: req.user.id,
-      patientId,
+      patientId: patient.id,
       imageUrl: null,
       result: "Analysis in progress...",
       status: "processing"
@@ -102,7 +102,11 @@ exports.createAnalysis = async (req, res) => {
 
 exports.getPatientAnalyses = async (req, res) => {
   try {
-    const analyses = await Analysis.findAll({ where: { patientId: req.params.patientId } });
+    const patientId = req.params.patientId;
+    const patient = await getOrCreatePatient(patientId, req.user.id);
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
+
+    const analyses = await Analysis.findAll({ where: { patientId: patient.id } });
     res.json(analyses);
   } catch (error) {
     res.status(500).json({ message: error.message });

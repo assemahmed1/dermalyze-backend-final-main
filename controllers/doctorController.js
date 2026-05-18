@@ -199,14 +199,14 @@ exports.addReview = async (req, res, next) => {
     }
 
     const newReview = await PatientReview.create({
-      patientId,
+      patientId: patient.id,
       doctorId: req.user.id,
       text: review,
     });
 
     // Return all reviews for this patient
     const reviews = await PatientReview.findAll({
-      where: { patientId },
+      where: { patientId: patient.id },
       order: [["createdAt", "DESC"]],
     });
 
@@ -230,7 +230,7 @@ exports.getReviews = async (req, res, next) => {
     }
 
     const reviews = await PatientReview.findAll({
-      where: { patientId },
+      where: { patientId: patient.id },
       order: [["createdAt", "DESC"]],
     });
 
@@ -253,7 +253,7 @@ exports.createAppointment = async (req, res, next) => {
     }
 
     const appointment = await Appointment.create({
-      patientId,
+      patientId: patient.id,
       doctorId: req.user.id,
       patientName,
       diagnosis,

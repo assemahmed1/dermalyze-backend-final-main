@@ -78,6 +78,10 @@ SmartTreatment.belongsToMany(SmartDoctor, {
 User.hasMany(Patient, { foreignKey: "doctorId" });
 Patient.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
 
+// Patient ←→ Registered User associations (foreign key userId)
+User.hasOne(Patient, { foreignKey: "userId", onDelete: "CASCADE" });
+Patient.belongsTo(User, { as: "user", foreignKey: "userId" });
+
 // Patient → Images
 Patient.hasMany(PatientImage, { as: "images", foreignKey: "patientId", onDelete: "CASCADE" });
 PatientImage.belongsTo(Patient, { foreignKey: "patientId" });
