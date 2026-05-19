@@ -26,6 +26,10 @@ const Disease = sequelize.define(
   {
     tableName: "Diseases",
     timestamps: true,
+    indexes: [
+      { fields: ["name"] },
+      { fields: ["scientificName"] },
+    ],
   }
 );
 

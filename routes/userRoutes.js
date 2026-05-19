@@ -9,6 +9,15 @@ const {
   verifyOTPRules, 
   resetPasswordRules 
 } = require("../middlewares/validationMiddleware");
+const rateLimit = require("express-rate-limit");
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit forgot-password/verify-otp/reset-password to 5 requests per 15 minutes
+  message: { success: false, message: "Too many request attempts, please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -19,9 +28,9 @@ const {
 
 // --- Authentication (Public) ---
 
-router.post("/forgot-password", forgotPasswordRules, validate, authController.forgotPassword);
-router.post("/verify-otp", verifyOTPRules, validate, authController.verifyOTP);
-router.post("/reset-password", resetPasswordRules, validate, authController.resetPassword);
+router.post("/forgot-password", authLimiter, forgotPasswordRules, validate, authController.forgotPassword);
+router.post("/verify-otp", authLimiter, verifyOTPRules, validate, authController.verifyOTP);
+router.post("/reset-password", authLimiter, resetPasswordRules, validate, authController.resetPassword);
 
 // --- Settings & Security (Protected) ---
 router.use(protect); // All routes below require JWT auth

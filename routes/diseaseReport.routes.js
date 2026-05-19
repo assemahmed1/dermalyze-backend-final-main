@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { getDiseaseReport } = require("./diseaseReport.service");
+const protect = require("../middlewares/authMiddleware");
 
-router.get("/disease-report", async (req, res) => {
+router.get("/disease-report", protect, async (req, res) => {
   const { disease } = req.query;
 
   if (!disease) {

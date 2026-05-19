@@ -3,6 +3,16 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const { spawn } = require("child_process");
+const rateLimit = require("express-rate-limit");
+const protect = require("../middlewares/authMiddleware");
+const requireRole = require("../middlewares/roleMiddleware");
+
+// Limit AI improvement scans to prevent CPU DoS
+const aiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // Limit each doctor to 5 scans per 5 minutes
+  message: { error: "Too many AI analysis scans requested. Please wait 5 minutes." }
+});
 
 // ── Multer: save uploads to the uploads/ folder ──────────────────────────────
 const storage = multer.diskStorage({
@@ -52,6 +62,9 @@ const upload = multer({
  */
 router.post(
   "/improvement",
+  protect,
+  requireRole("doctor"),
+  aiLimiter,
   upload.fields([
     { name: "visit1", maxCount: 1 },
     { name: "visit2", maxCount: 1 },

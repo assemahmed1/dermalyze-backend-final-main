@@ -8,16 +8,30 @@ async function compareFaces(idImageBuffer, selfieImageBuffer) {
   const idPath = path.join(os.tmpdir(), `id_${Date.now()}.jpg`);
   const selfiePath = path.join(os.tmpdir(), `selfie_${Date.now()}.jpg`);
 
-  fs.writeFileSync(idPath, idImageBuffer);
-  fs.writeFileSync(selfiePath, selfieImageBuffer);
+  try {
+    fs.writeFileSync(idPath, idImageBuffer);
+    fs.writeFileSync(selfiePath, selfieImageBuffer);
+  } catch (err) {
+    console.error("Failed to write face verification temp files:", err);
+    try {
+      if (fs.existsSync(idPath)) fs.unlinkSync(idPath);
+      if (fs.existsSync(selfiePath)) fs.unlinkSync(selfiePath);
+    } catch (_) {}
+    return { match: false, similarity: 0, message: "Server temporary file creation failed" };
+  }
 
   return new Promise((resolve) => {
     execFile(
       "python3",
       [path.join(__dirname, "../scripts/compareFaces.py"), idPath, selfiePath],
       (error, stdout, stderr) => {
-        fs.unlinkSync(idPath);
-        fs.unlinkSync(selfiePath);
+        // Guarantee file cleanup
+        try {
+          if (fs.existsSync(idPath)) fs.unlinkSync(idPath);
+          if (fs.existsSync(selfiePath)) fs.unlinkSync(selfiePath);
+        } catch (cleanupError) {
+          console.error("Failed to delete face verification temp files:", cleanupError);
+        }
 
         if (error) {
           console.error("Face comparison error:", stderr);
@@ -37,14 +51,28 @@ async function compareFaces(idImageBuffer, selfieImageBuffer) {
 // Check for doctor profession keyword in ID back
 async function checkDoctorOnId(idBackImageBuffer) {
   const idBackPath = path.join(os.tmpdir(), `idback_${Date.now()}.jpg`);
-  fs.writeFileSync(idBackPath, idBackImageBuffer);
+
+  try {
+    fs.writeFileSync(idBackPath, idBackImageBuffer);
+  } catch (err) {
+    console.error("Failed to write doctor ID temp file:", err);
+    try {
+      if (fs.existsSync(idBackPath)) fs.unlinkSync(idBackPath);
+    } catch (_) {}
+    return { isDoctor: false, message: "Server temporary file creation failed" };
+  }
 
   return new Promise((resolve) => {
     execFile(
       "python3",
       [path.join(__dirname, "../scripts/checkDoctorId.py"), idBackPath],
       (error, stdout, stderr) => {
-        fs.unlinkSync(idBackPath);
+        // Guarantee file cleanup
+        try {
+          if (fs.existsSync(idBackPath)) fs.unlinkSync(idBackPath);
+        } catch (cleanupError) {
+          console.error("Failed to delete doctor ID temp file:", cleanupError);
+        }
 
         if (error) {
           console.error("OCR error:", stderr);

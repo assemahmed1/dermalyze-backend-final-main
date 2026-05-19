@@ -57,80 +57,86 @@ async function syncDiseases() {
     const dataRows = rows.slice(1); // Skip header row
     console.log(`📥 Downloaded ${dataRows.length} disease records. Starting database sync...`);
 
-    let syncedDiseasesCount = 0;
-
+    // In-memory deduplication and parsing
+    const uniqueEntriesMap = new Map();
     for (const row of dataRows) {
       const folderName = row[1] || "";
-      const commonName = row[2] || "";
-      const scientificName = row[3] || "";
-      const category = row[4] || "";
+      const commonName = (row[2] || "").trim();
+      const scientificName = (row[3] || "").trim();
+      const category = (row[4] || "").trim();
 
       if (!commonName) continue; // Skip rows without a common name
 
-      // 1. Sync in Diseases & Disease_Reports (For Encyclopedia & Reports API)
-      const [diseaseRecord] = await Disease.findOrCreate({
-        where: { name: commonName },
-        defaults: {
-          scientificName: scientificName || commonName,
-          generalInfo: `Category: ${category || "General"}. Origin folder: ${folderName}.`
-        }
-      });
-
-      // Update scientificName/generalInfo if it already existed
-      await Disease.update({
+      uniqueEntriesMap.set(commonName, {
+        commonName,
         scientificName: scientificName || commonName,
-        generalInfo: `Category: ${category || "General"}. Origin folder: ${folderName}.`
-      }, {
-        where: { id: diseaseRecord.id }
+        generalInfo: `Category: ${category || "General"}. Origin folder: ${folderName}.`,
+        clinicalDescription: `Scientific Name: ${scientificName || "N/A"}. Category: ${category || "General"}. Folder: ${folderName}.`,
+        smartDescription: `Scientific Name: ${scientificName || "N/A"}. Category: ${category || "General"}.`
+      });
+    }
+
+    const uniqueEntries = Array.from(uniqueEntriesMap.values());
+    console.log(`✨ Parsed ${uniqueEntries.length} unique skin diseases. Performing batch bulk create...`);
+
+    // Use a database transaction for data safety and speed
+    await sequelize.transaction(async (t) => {
+      // 1. Sync in Diseases table
+      const diseaseData = uniqueEntries.map(e => ({
+        name: e.commonName,
+        scientificName: e.scientificName,
+        generalInfo: e.generalInfo
+      }));
+      await Disease.bulkCreate(diseaseData, {
+        updateOnDuplicate: ["scientificName", "generalInfo"],
+        transaction: t
       });
 
-      // Ensure a matching DiseaseReport entry exists for 100% compatibility
-      await DiseaseReport.findOrCreate({
-        where: { diseaseId: diseaseRecord.id },
-        defaults: {
+      // Fetch all diseases to get IDs for DiseaseReports
+      const allDiseases = await Disease.findAll({ transaction: t });
+      const existingReports = await DiseaseReport.findAll({ attributes: ["diseaseId"], transaction: t });
+      const existingReportIds = new Set(existingReports.map(r => r.diseaseId));
+
+      // Create missing DiseaseReport entries
+      const newReports = allDiseases
+        .filter(d => !existingReportIds.has(d.id))
+        .map(d => ({
+          diseaseId: d.id,
           symptoms: [],
           sideEffects: [],
           improvementSigns: []
-        }
+        }));
+
+      if (newReports.length > 0) {
+        await DiseaseReport.bulkCreate(newReports, { transaction: t });
+      }
+
+      // 2. Sync in ClinicalDiseases table
+      const clinicalData = uniqueEntries.map(e => ({
+        name: e.commonName,
+        description: e.clinicalDescription,
+        symptoms: [],
+        treatments: [],
+        imageUrl: ""
+      }));
+      await ClinicalDisease.bulkCreate(clinicalData, {
+        updateOnDuplicate: ["description"],
+        transaction: t
       });
 
-      // 2. Sync in ClinicalDiseases (For Doctor Clinical Records & Lists)
-      const [clinicalRecord] = await ClinicalDisease.findOrCreate({
-        where: { name: commonName },
-        defaults: {
-          description: `Scientific Name: ${scientificName || "N/A"}. Category: ${category || "General"}. Folder: ${folderName}.`,
-          symptoms: [],
-          treatments: [],
-          imageUrl: ""
-        }
+      // 3. Sync in SmartDisease table
+      const smartData = uniqueEntries.map(e => ({
+        name: e.commonName,
+        description: e.smartDescription,
+        symptoms: ""
+      }));
+      await SmartDisease.bulkCreate(smartData, {
+        updateOnDuplicate: ["description"],
+        transaction: t
       });
+    });
 
-      await ClinicalDisease.update({
-        description: `Scientific Name: ${scientificName || "N/A"}. Category: ${category || "General"}. Folder: ${folderName}.`
-      }, {
-        where: { id: clinicalRecord.id }
-      });
-
-      // 3. Sync in smart_diseases (For Smart History Insights / AI)
-      const [smartRecord] = await SmartDisease.findOrCreate({
-        where: { name: commonName },
-        defaults: {
-          description: `Scientific Name: ${scientificName || "N/A"}. Category: ${category || "General"}.`,
-          symptoms: ""
-        }
-      });
-
-      await SmartDisease.update({
-        description: `Scientific Name: ${scientificName || "N/A"}. Category: ${category || "General"}.`
-      }, {
-        where: { disease_id: smartRecord.disease_id }
-      });
-
-      syncedDiseasesCount++;
-      console.log(`✨ Synced disease: "${commonName}" (Scientific: ${scientificName})`);
-    }
-
-    console.log(`\n🎉 SUCCESS! Successfully synced ${syncedDiseasesCount} skin diseases to MySQL from Google Sheets.`);
+    console.log(`\n🎉 SUCCESS! Successfully synced ${uniqueEntries.length} skin diseases to MySQL from Google Sheets in batch bulk mode.`);
     process.exit(0);
   } catch (error) {
     console.error("❌ Sync Error:", error.stack || error.message);

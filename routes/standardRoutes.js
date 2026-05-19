@@ -44,12 +44,11 @@ const mapParams = (from, to) => {
 // GET /api/patients/me/medications
 router.get("/patients/me/medications", protect, requireRole("patient"), async (req, res, next) => {
   try {
-    const patientId = req.user.id;
-    const patient = await getOrCreatePatient(patientId);
+    const patient = await getOrCreatePatient(req.user.id);
     if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
 
     const medications = await Medication.findAll({
-      where: { patientId },
+      where: { patientId: patient.id },
       order: [["createdAt", "DESC"]]
     });
     res.json({ success: true, data: medications });
@@ -61,9 +60,11 @@ router.get("/patients/me/medications", protect, requireRole("patient"), async (r
 // GET /api/patients/me/analysis
 router.get("/patients/me/analysis", protect, requireRole("patient"), async (req, res, next) => {
   try {
-    const patientId = req.user.id;
+    const patient = await getOrCreatePatient(req.user.id);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
     const analyses = await Analysis.findAll({
-      where: { patientId },
+      where: { patientId: patient.id },
       order: [["createdAt", "DESC"]]
     });
     res.json({ success: true, data: analyses });

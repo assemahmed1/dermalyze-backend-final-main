@@ -1,16 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const { getSmartPatients, getSmartTreatments } = require("./smartHistory.service");
+const protect = require("../middlewares/authMiddleware");
+const requireRole = require("../middlewares/roleMiddleware");
 
-// GET /api/smart-history/patients?doctor_id=1&disease=Eczema
+// All smart-history routes require authentication and doctor privileges
+router.use(protect);
+router.use(requireRole("doctor"));
+
+// GET /api/smart-history/patients?disease=Eczema
 router.get("/patients", async (req, res) => {
-  const doctorId = req.query.doctor_id;
+  const doctorId = req.user.id;
   const disease = req.query.disease;
 
-  if (!doctorId || !disease) {
+  if (!disease) {
     return res.status(400).json({
       success: false,
-      error: "Query parameters 'doctor_id' and 'disease' are required."
+      error: "Query parameter 'disease' is required."
     });
   }
 
@@ -26,15 +32,15 @@ router.get("/patients", async (req, res) => {
   }
 });
 
-// GET /api/smart-history/treatments?doctor_id=1&disease=Eczema
+// GET /api/smart-history/treatments?disease=Eczema
 router.get("/treatments", async (req, res) => {
-  const doctorId = req.query.doctor_id;
+  const doctorId = req.user.id;
   const disease = req.query.disease;
 
-  if (!doctorId || !disease) {
+  if (!disease) {
     return res.status(400).json({
       success: false,
-      error: "Query parameters 'doctor_id' and 'disease' are required."
+      error: "Query parameter 'disease' is required."
     });
   }
 
