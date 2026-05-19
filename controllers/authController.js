@@ -122,8 +122,9 @@ exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ where: { email } });
 
+    // Always return success to prevent email enumeration attacks
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.json({ message: "If this email is registered, an OTP has been sent." });
     }
 
     // Generate 6-digit OTP

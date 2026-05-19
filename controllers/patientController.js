@@ -23,11 +23,23 @@ const createPatient = async (req, res) => {
 
 const getPatients = async (req, res, next) => {
   try {
-    const patients = await Patient.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
+
+    const { rows: patients, count } = await Patient.findAndCountAll({
       where: { doctorId: req.user.id },
       order: [["createdAt", "DESC"]],
+      limit,
+      offset,
     });
-    res.json(patients);
+
+    res.json({
+      data: patients,
+      total: count,
+      page,
+      pages: Math.ceil(count / limit),
+    });
   } catch (error) {
     next(error);
   }
