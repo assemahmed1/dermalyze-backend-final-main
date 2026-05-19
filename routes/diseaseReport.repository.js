@@ -9,6 +9,7 @@ async function getDiseaseReportFromDB(diseaseName) {
       d.name AS disease_name,
       d.scientificName AS scientific_name,
       d.generalInfo AS general_info,
+      d.imageUrl AS image_url,
       dr.symptoms AS symptoms,
       dr.sideEffects AS side_effects,
       dr.improvementSigns AS improvement_signs
@@ -46,6 +47,7 @@ async function getDiseaseReportFromDB(diseaseName) {
     disease_name: report.disease_name,
     scientific_name: report.scientific_name,
     general_info: report.general_info,
+    image_url: report.image_url || null,
     symptoms: parseJsonArray(report.symptoms),
     side_effects: parseJsonArray(report.side_effects),
     improvement_signs: parseJsonArray(report.improvement_signs)
