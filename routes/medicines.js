@@ -1,15 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const { google } = require("googleapis");
+const { Op } = require("sequelize");
+const ClinicalMedication = require("../models/ClinicalMedication");
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
 const cacheMiddleware = require("../middlewares/cacheMiddleware");
 
-const getAuthClient = () =>
-  new google.auth.GoogleAuth({
-    credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-  });
+// Helper to map DB record to the expected output format
+const mapMedication = (med) => {
+  let activeIngredient = "N/A";
+  if (med.description && med.description.includes("Active Ingredient:")) {
+    activeIngredient = med.description
+      .replace("Active Ingredient:", "")
+      .replace(/\./g, "")
+      .trim();
+  }
+  return {
+    name: med.name || "N/A",
+    activeIngredient,
+    category: med.category || "N/A",
+  };
+};
 
 /**
  * @swagger
@@ -31,28 +42,22 @@ router.get("/medicines/search", async (req, res) => {
       return res.status(400).json({ message: "Search query must be at least 2 characters" });
     }
 
-    const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "medicines!A:C"
+    const query = q.trim();
+
+    const results = await ClinicalMedication.findAll({
+      where: {
+        [Op.or]: [
+          { name: { [Op.like]: `%${query}%` } },
+          { description: { [Op.like]: `%${query}%` } },
+          { category: { [Op.like]: `%${query}%` } }
+        ]
+      },
+      limit: 20
     });
 
-    const rows = response.data.values.slice(1); // skip header
-    const query = q.toLowerCase();
+    const mappedResults = results.map(mapMedication);
 
-    const results = rows
-      .filter((row) =>
-        row[0]?.toLowerCase().includes(query) ||
-        row[1]?.toLowerCase().includes(query)
-      )
-      .slice(0, 20)
-      .map((row) => ({
-        name: row[0] || "N/A",
-        activeIngredient: row[1] || "N/A",
-        category: row[2] || "N/A",
-      }));
-
-    res.json({ success: true, total: results.length, results });
+    res.json({ success: true, total: mappedResults.length, results: mappedResults });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -73,32 +78,25 @@ router.get("/medicines/search", async (req, res) => {
  */
 router.get("/medicines/match", async (req, res) => {
   try {
-    const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({ message: "Search query is required" });
+    const qVal = req.query.q || req.query.name;
+    if (!qVal) {
+      return res.status(400).json({ message: "Search query ('q' or 'name') is required" });
     }
 
-    const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "medicines!A:C",
+    const query = qVal.trim();
+
+    const results = await ClinicalMedication.findAll({
+      where: {
+        [Op.or]: [
+          { name: query },
+          { description: { [Op.like]: `%Active Ingredient: ${query}%` } }
+        ]
+      }
     });
 
-    const rows = response.data.values.slice(1); // skip header
-    const query = q.toLowerCase().trim();
+    const mappedResults = results.map(mapMedication);
 
-    const results = rows
-      .filter((row) =>
-        row[0]?.toLowerCase() === query ||
-        row[1]?.toLowerCase() === query
-      )
-      .map((row) => ({
-        name: row[0] || "N/A",
-        activeIngredient: row[1] || "N/A",
-        category: row[2] || "N/A",
-      }));
-
-    res.json({ success: true, total: results.length, results });
+    res.json({ success: true, total: mappedResults.length, results: mappedResults });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -117,28 +115,20 @@ router.get("/medicines/all", cacheMiddleware(3600), async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const startIndex = (page - 1) * limit;
 
-    const sheets = google.sheets({ version: "v4", auth: getAuthClient() });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "medicines!A:C",
+    const { count, rows } = await ClinicalMedication.findAndCountAll({
+      offset: startIndex,
+      limit: limit,
+      order: [["name", "ASC"]]
     });
 
-    const rows = response.data.values.slice(1); // skip header
-
-    const allMedications = rows.map((row) => ({
-      name: row[0] || "N/A",
-      activeIngredient: row[1] || "N/A",
-      category: row[2] || "N/A",
-    }));
-
-    const paginatedData = allMedications.slice(startIndex, startIndex + limit);
+    const paginatedData = rows.map(mapMedication);
 
     res.json({
       success: true,
-      total: allMedications.length,
+      total: count,
       page,
       limit,
-      totalPages: Math.ceil(allMedications.length / limit),
+      totalPages: Math.ceil(count / limit),
       data: paginatedData,
     });
   } catch (err) {

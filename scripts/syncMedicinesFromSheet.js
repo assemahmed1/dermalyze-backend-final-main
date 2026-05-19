@@ -47,44 +47,39 @@ async function syncMedicines() {
     }
 
     const dataRows = rows.slice(1); // Skip header row
-    console.log(`📥 Downloaded ${dataRows.length} medicine records. Starting database sync...`);
+    console.log(`📥 Downloaded ${dataRows.length} medicine records. Pre-deduplicating and preparing batches...`);
 
+    const uniqueRecordsMap = new Map();
+    for (const row of dataRows) {
+      const name = (row[0] || "").trim();
+      const activeIngredient = (row[1] || "").trim();
+      const category = (row[2] || "Uncategorized").trim();
+
+      if (!name) continue;
+
+      uniqueRecordsMap.set(name, {
+        name,
+        category,
+        description: `Active Ingredient: ${activeIngredient || "N/A"}.`,
+        uses: [category],
+        sideEffects: [],
+        dosage: "As directed by physician."
+      });
+    }
+
+    const records = Array.from(uniqueRecordsMap.values());
+    console.log(`⚡ Deduped to ${records.length} unique records. Ingesting into MySQL via batched bulk upsert...`);
+
+    const batchSize = 1000;
     let syncedMedicinesCount = 0;
 
-    for (const row of dataRows) {
-      const name = row[0] || "";
-      const activeIngredient = row[1] || "";
-      const category = row[2] || "Uncategorized";
-
-      if (!name) continue; // Skip rows without a name
-
-      // Sync in ClinicalMedications (For Doctor Clinical Prescriptions & Search)
-      const [clinicalRecord, created] = await ClinicalMedication.findOrCreate({
-        where: { name },
-        defaults: {
-          category,
-          description: `Active Ingredient: ${activeIngredient || "N/A"}.`,
-          uses: [category],
-          sideEffects: [],
-          dosage: "As directed by physician."
-        }
+    for (let i = 0; i < records.length; i += batchSize) {
+      const batch = records.slice(i, i + batchSize);
+      await ClinicalMedication.bulkCreate(batch, {
+        updateOnDuplicate: ["category", "description", "uses", "updatedAt"]
       });
-
-      if (!created) {
-        // Update category/description if it already existed
-        await ClinicalMedication.update({
-          category,
-          description: `Active Ingredient: ${activeIngredient || "N/A"}.`,
-          uses: [category]
-        }, {
-          where: { id: clinicalRecord.id }
-        });
-      }
-
-      syncedMedicinesCount++;
-      if (syncedMedicinesCount % 50 === 0 || syncedMedicinesCount === dataRows.length) {
-        console.log(`✨ Synced ${syncedMedicinesCount}/${dataRows.length} medicines...`);
-      }
+      syncedMedicinesCount += batch.length;
+      console.log(`✨ Synced ${syncedMedicinesCount}/${records.length} medicines...`);
     }
 
     console.log(`\n🎉 SUCCESS! Successfully synced ${syncedMedicinesCount} medicines to MySQL from Google Sheets.`);
