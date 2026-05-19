@@ -1,0 +1,491 @@
+{
+  "info": {
+    "_postman_id": "dermalyze-api-collection",
+    "name": "Dermalyze Backend API",
+    "description": "Complete Postman collection for testing all Dermalyze backend endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5050", "type": "string" },
+    { "key": "patient_token", "value": "", "type": "string" },
+    { "key": "doctor_token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Register Patient",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Patient\",\n  \"email\": \"ahmed_patient@test.com\",\n  \"password\": \"Test1234A\",\n  \"role\": \"patient\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Register Doctor",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name", "value": "Dr. Mohamed" },
+                { "key": "email", "value": "dr.mohamed@test.com" },
+                { "key": "password", "value": "Test1234A" },
+                { "key": "role", "value": "doctor" },
+                { "key": "idCardFront", "type": "file", "src": "" },
+                { "key": "idCardBack", "type": "file", "src": "" },
+                { "key": "selfie", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{base_url}}/api/auth/register",
+            "description": "Doctor registration requires 3 image files: idCardFront, idCardBack, selfie"
+          }
+        },
+        {
+          "name": "Login Patient → saves token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('patient_token', res.token);",
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed_patient@test.com\",\n  \"password\": \"Test1234A\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login Doctor → saves token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('doctor_token', res.token);",
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dr.verified@dermalyze.com\",\n  \"password\": \"Test1234A\"\n}"
+            },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": "{{base_url}}/api/auth/refresh"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": "{{base_url}}/api/auth/logout"
+          }
+        },
+        {
+          "name": "Forgot Password (no email leak)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns generic message', () => {",
+                  "  const res = pm.response.json();",
+                  "  pm.expect(res.message).to.include('registered');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost@nonexistent.com\"\n}"
+            },
+            "url": "{{base_url}}/api/user/forgot-password"
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed_patient@test.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": "{{base_url}}/api/user/verify-otp"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmed_patient@test.com\",\n  \"code\": \"123456\",\n  \"newPassword\": \"NewPass1234A\"\n}"
+            },
+            "url": "{{base_url}}/api/user/reset-password"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 Patient",
+      "item": [
+        {
+          "name": "Get My Medications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": "{{base_url}}/api/patients/me/medications"
+          }
+        },
+        {
+          "name": "Get My Dashboard (analyses)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": "{{base_url}}/api/standard/analyses"
+          }
+        },
+        {
+          "name": "Get My Appointments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": "{{base_url}}/api/standard/appointments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍⚕️ Doctor",
+      "item": [
+        {
+          "name": "Get Doctor Patients (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/doctor/patients?page=1&limit=10",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor Appointments (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/doctor/appointments?page=1&limit=10",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "url": "{{base_url}}/api/doctor/stats"
+          }
+        },
+        {
+          "name": "Get Doctor Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "url": "{{base_url}}/api/doctor/notifications"
+          }
+        },
+        {
+          "name": "Create Appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{doctor_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientName\": \"Ahmed Ali\",\n  \"diagnosis\": \"Eczema\",\n  \"appointmentDate\": \"2025-12-01\",\n  \"appointmentTime\": \"10:00\"\n}"
+            },
+            "url": "{{base_url}}/api/doctor/patients/1/appointments",
+            "description": "Replace '1' in URL with actual patientId"
+          }
+        }
+      ]
+    },
+    {
+      "name": "💊 Medicines",
+      "item": [
+        {
+          "name": "Get All Medicines (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/medicines/all?page=1&limit=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Medicines",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/medicines/search?q=Cream&limit=10",
+              "query": [
+                { "key": "q", "value": "Cream" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match Medicine by Name",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/medicines/match?name=Hydrocortisone Cream",
+              "query": [
+                { "key": "name", "value": "Hydrocortisone Cream" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧠 Smart History (Doctor only)",
+      "item": [
+        {
+          "name": "Get Patients by Disease",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/smart-history/patients?disease=Eczema",
+              "query": [{ "key": "disease", "value": "Eczema" }]
+            }
+          }
+        },
+        {
+          "name": "Get Treatments by Disease",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/smart-history/treatments?disease=Eczema",
+              "query": [{ "key": "disease", "value": "Eczema" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🦠 Disease Report",
+      "item": [
+        {
+          "name": "Get Disease Info (requires login)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/disease-report?disease=Eczema",
+              "query": [{ "key": "disease", "value": "Eczema" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Chat",
+      "item": [
+        {
+          "name": "Get Conversations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": "{{base_url}}/api/chat/conversations"
+          }
+        },
+        {
+          "name": "Get Messages with User",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{patient_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/chat/messages/2?page=1&limit=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Replace '2' with the userId of your chat partner"
+          }
+        },
+        {
+          "name": "Send Text Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{patient_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverId\": \"2\",\n  \"content\": \"Hello Doctor!\",\n  \"type\": \"text\"\n}"
+            },
+            "url": "{{base_url}}/api/chat/send"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 AI Analysis",
+      "item": [
+        {
+          "name": "Skin Improvement Comparison (Doctor only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{doctor_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "visit1", "type": "file", "src": "", "description": "First visit skin image (JPG/PNG)" },
+                { "key": "visit2", "type": "file", "src": "", "description": "Second visit skin image (JPG/PNG)" }
+              ]
+            },
+            "url": "{{base_url}}/api/ai/improvement",
+            "description": "Rate limited: 5 requests per 5 minutes per doctor"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔒 Security Tests (all should return 401)",
+      "item": [
+        {
+          "name": "Smart History - NO TOKEN → expect 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Returns 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/smart-history/patients?disease=Eczema",
+              "query": [{ "key": "disease", "value": "Eczema" }]
+            }
+          }
+        },
+        {
+          "name": "Disease Report - NO TOKEN → expect 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Returns 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/disease-report?disease=Eczema",
+              "query": [{ "key": "disease", "value": "Eczema" }]
+            }
+          }
+        },
+        {
+          "name": "AI Improvement - NO TOKEN → expect 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Returns 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/ai/improvement"
+          }
+        },
+        {
+          "name": "Forgot Password - ghost email (no leak)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 200 with generic message', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().message).to.include('registered');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"definitelyfake99999@nowhere.com\"\n}"
+            },
+            "url": "{{base_url}}/api/user/forgot-password"
+          }
+        }
+      ]
+    }
+  ]
+}
