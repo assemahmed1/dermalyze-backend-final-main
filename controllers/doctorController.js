@@ -30,14 +30,16 @@ exports.linkDoctor = async (req, res, next) => {
 exports.getPatients = async (req, res, next) => {
   try {
     const doctorId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
 
     // Find all users (role patient) belonging to this doctor
-    const patients = await User.findAll({
-      where: {
-        doctorId: doctorId,
-        role: "patient"
-      },
-      order: [["createdAt", "DESC"]]
+    const { rows: patients, count } = await User.findAndCountAll({
+      where: { doctorId, role: "patient" },
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset
     });
 
     const formattedPatients = patients.map(p => ({
@@ -50,7 +52,10 @@ exports.getPatients = async (req, res, next) => {
     }));
 
     res.json({
-      patients: formattedPatients
+      patients: formattedPatients,
+      total: count,
+      page,
+      pages: Math.ceil(count / limit)
     });
   } catch (error) {
     next(error);
@@ -270,11 +275,22 @@ exports.createAppointment = async (req, res, next) => {
 // 🗓️ GET /doctor/appointments
 exports.getAppointments = async (req, res, next) => {
   try {
-    const appointments = await Appointment.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
+
+    const { rows: appointments, count } = await Appointment.findAndCountAll({
       where: { doctorId: req.user.id },
       order: [["appointmentDate", "ASC"]],
+      limit,
+      offset
     });
-    res.json(appointments);
+    res.json({
+      data: appointments,
+      total: count,
+      page,
+      pages: Math.ceil(count / limit)
+    });
   } catch (error) {
     next(error);
   }

@@ -2,23 +2,9 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const { generateAccessToken, generateRefreshToken } = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
-const cloudinary = require("../config/cloudinary");
+const { uploadToCloudinary } = require("../utils/cloudinaryUtils");
 const { sendAdminNewDoctorAlert } = require("../services/emailService");
 const { Op } = require("sequelize");
-
-// Upload image buffer to Cloudinary
-function uploadToCloudinary(buffer, folder) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder, transformation: [{ width: 1024, height: 1024, crop: "limit" }] },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
-    );
-    stream.end(buffer);
-  });
-}
 
 // ================= REGISTER =================
 exports.register = async (req, res) => {
@@ -92,9 +78,7 @@ exports.register = async (req, res) => {
       });
 
       if (doctor) {
-        if (typeof doctor.addPatient === 'function') {
-          await doctor.addPatient(user);
-        }
+        await doctor.addPatient(user);
       }
     }
 
@@ -221,13 +205,13 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
     // Compare password using model method
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid password" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
     // Block pending or rejected doctors from logging in

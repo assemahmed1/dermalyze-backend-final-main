@@ -39,7 +39,9 @@ const Notification = sequelize.define(
   {
     tableName: "Notifications",
     timestamps: true,
-    indexes: [{ fields: ["doctorId"] }],
+    indexes: [
+      { fields: ["doctorId", "isRead"] },
+    ],
   }
 );
 

@@ -4,8 +4,9 @@ const { Redis } = require("@upstash/redis");
 let redisClient = null;
 let isRedisConfigured = false;
 
-// In-memory fallback cache Map
+// In-memory fallback cache Map with bounded size (LRU eviction)
 const memoryCache = new Map();
+const MAX_MEMORY_CACHE_SIZE = 500;
 
 const restUrl = process.env.UPSTASH_REDIS_REST_URL;
 const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -73,6 +74,11 @@ const cacheMiddleware = (ttlSeconds = 3600) => {
               });
             });
           } else {
+            // Evict oldest entry if cache is at max capacity
+            if (memoryCache.size >= MAX_MEMORY_CACHE_SIZE) {
+              const firstKey = memoryCache.keys().next().value;
+              memoryCache.delete(firstKey);
+            }
             memoryCache.set(cacheKey, {
               value: data,
               expiry: Date.now() + ttlSeconds * 1000,

@@ -90,29 +90,32 @@ router.get("/doctor/notifications", auth, requireRole("doctor"), requireVerified
  */
 router.put("/doctor/notifications/read", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.markNotificationsRead);
 
-/**
- * @swagger
- * /doctor/notifications/test:
- *   post:
- *     summary: Create a test notification for the logged-in doctor
- *     tags: [Doctor]
- *     responses:
- *       201:
- *         description: Created notification object
- */
-router.post("/doctor/notifications/test", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.testNotification);
+// ⚠️ TEST-ONLY ROUTES — disabled in production
+if (process.env.NODE_ENV !== "production") {
+  /**
+   * @swagger
+   * /doctor/notifications/test:
+   *   post:
+   *     summary: Create a test notification for the logged-in doctor
+   *     tags: [Doctor]
+   *     responses:
+   *       201:
+   *         description: Created notification object
+   */
+  router.post("/doctor/notifications/test", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.testNotification);
 
-/**
- * @swagger
- * /doctor/notifications/test-bulk:
- *   post:
- *     summary: Create 5 sample notifications of different types (FOR TESTING ONLY)
- *     tags: [Doctor Notifications]
- *     responses:
- *       201:
- *         description: 5 sample notifications created
- */
-router.post("/doctor/notifications/test-bulk", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.testBulkNotifications);
+  /**
+   * @swagger
+   * /doctor/notifications/test-bulk:
+   *   post:
+   *     summary: Create 5 sample notifications of different types (FOR TESTING ONLY)
+   *     tags: [Doctor Notifications]
+   *     responses:
+   *       201:
+   *         description: 5 sample notifications created
+   */
+  router.post("/doctor/notifications/test-bulk", auth, requireRole("doctor"), requireVerifiedDoctor, doctorController.testBulkNotifications);
+}
 
 /**
  * @swagger

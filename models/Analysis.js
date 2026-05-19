@@ -37,7 +37,7 @@ const Analysis = sequelize.define(
     tableName: "Analyses",
     timestamps: true,
     indexes: [
-      { fields: ["patientId"] },
+      { fields: ["patientId", "createdAt"] },
       { fields: ["doctorId"] },
     ],
   }

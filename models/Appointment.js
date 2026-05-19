@@ -45,8 +45,7 @@ const Appointment = sequelize.define(
     timestamps: true,
     indexes: [
       { fields: ["patientId"] },
-      { fields: ["doctorId"] },
-      { fields: ["appointmentDate"] },
+      { fields: ["doctorId", "appointmentDate"] },
     ],
   }
 );

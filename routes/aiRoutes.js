@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
 const { spawn } = require("child_process");
 const rateLimit = require("express-rate-limit");
 const protect = require("../middlewares/authMiddleware");
@@ -14,20 +16,16 @@ const aiLimiter = rateLimit({
   message: { error: "Too many AI analysis scans requested. Please wait 5 minutes." }
 });
 
-// ── Multer: save uploads to the uploads/ folder ──────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../uploads"));
-  },
-  filename: (req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}-${file.originalname}`);
-  },
-});
-
+// ── Multer: use memory storage (safe for Railway ephemeral containers) ─────────
 const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed"));
+    }
+    cb(null, true);
+  }
 });
 
 // ── POST /ai/improvement ──────────────────────────────────────────────────────
@@ -37,6 +35,8 @@ const upload = multer({
  *   post:
  *     summary: Compare skin severity between two visit images
  *     tags: [AI]
+ *     security:
+ *       - bearerAuth: []
  *     consumes:
  *       - multipart/form-data
  *     requestBody:
@@ -57,6 +57,10 @@ const upload = multer({
  *         description: Severity scores and improvement percentage
  *       400:
  *         description: Both images are required
+ *       401:
+ *         description: Unauthorized
+ *       429:
+ *         description: Too many requests
  *       500:
  *         description: Inference error
  */
@@ -78,10 +82,25 @@ router.post(
         .json({ error: "Both visit1 and visit2 images are required." });
     }
 
-    const image1Path = files.visit1[0].path;
-    const image2Path = files.visit2[0].path;
-    const scriptPath = path.join(__dirname, "../scripts/inference.py");
+    // Write buffers to /tmp (safe across all environments including Railway)
+    const image1Path = path.join(os.tmpdir(), `visit1_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`);
+    const image2Path = path.join(os.tmpdir(), `visit2_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`);
 
+    // Helper to clean up temp files safely
+    const cleanup = () => {
+      try { if (fs.existsSync(image1Path)) fs.unlinkSync(image1Path); } catch (_) {}
+      try { if (fs.existsSync(image2Path)) fs.unlinkSync(image2Path); } catch (_) {}
+    };
+
+    try {
+      fs.writeFileSync(image1Path, files.visit1[0].buffer);
+      fs.writeFileSync(image2Path, files.visit2[0].buffer);
+    } catch (writeErr) {
+      cleanup();
+      return res.status(500).json({ error: "Failed to write temporary files.", details: writeErr.message });
+    }
+
+    const scriptPath = path.join(__dirname, "../scripts/inference.py");
     const py = spawn("python3", [scriptPath, image1Path, image2Path]);
 
     let stdout = "";
@@ -96,6 +115,7 @@ router.post(
     });
 
     py.on("close", (code) => {
+      cleanup(); // Always clean up temp files on process close
       if (code !== 0) {
         console.error("[inference.py stderr]", stderr);
         return res.status(500).json({
@@ -129,6 +149,7 @@ router.post(
     });
 
     py.on("error", (err) => {
+      cleanup(); // Clean up on spawn error too
       console.error("[spawn error]", err);
       return res
         .status(500)

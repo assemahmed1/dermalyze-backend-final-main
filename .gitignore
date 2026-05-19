@@ -1,2 +1,19 @@
 .env
 node_modules/
+
+# Uploaded files — never commit user data
+uploads/*
+!uploads/.gitkeep
+
+# Test/scratch files
+scratch/
+tests/*.log
+*.log
+
+# Response snapshot files (ad-hoc curl outputs)
+*_resp.json
+analysis_resp.json
+chat.json
+history.json
+history_ok.json
+stats.json

@@ -99,6 +99,11 @@ app.use((req, res, next) => {
   await connectDB();
   await sequelize.sync();
   console.log("✅ MySQL tables synced successfully.");
+
+  // Reset stale online statuses from any previous server crash
+  const User = require("./models/User");
+  await User.update({ isOnline: false }, { where: { isOnline: true } });
+  console.log("🔄 Reset stale online statuses.");
 })();
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

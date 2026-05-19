@@ -17,8 +17,10 @@ const registerRules = [
   body("name").trim().notEmpty().withMessage("Name is required"),
   body("email").isEmail().withMessage("Valid email is required"),
   body("password")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters"),
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters")
+    .matches(/^(?=.*[A-Z])(?=.*\d)/)
+    .withMessage("Password must contain at least one uppercase letter and one number"),
   body("role")
     .optional()
     .isIn(["doctor", "patient"])
@@ -62,8 +64,10 @@ const resetPasswordRules = [
   body("email").isEmail().withMessage("Valid email is required"),
   body("code").isLength({ min: 6, max: 6 }).withMessage("OTP must be 6 digits"),
   body("newPassword")
-    .isLength({ min: 6 })
-    .withMessage("New password must be at least 6 characters")
+    .isLength({ min: 8 })
+    .withMessage("New password must be at least 8 characters")
+    .matches(/^(?=.*[A-Z])(?=.*\d)/)
+    .withMessage("New password must contain at least one uppercase letter and one number")
 ];
 
 // Review validation rules

@@ -1,7 +1,7 @@
-const { Op } = require("sequelize");
+const { Op, fn, col, literal } = require("sequelize");
 const Message = require("../models/Message");
 const User = require("../models/User");
-const cloudinary = require("../config/cloudinary");
+const { uploadToCloudinary } = require("../utils/cloudinaryUtils");
 const { sendPushNotification } = require("../services/notificationService");
 
 // Helper to format messages to return exact required fields
@@ -20,33 +20,6 @@ const formatMessage = (msg) => {
   };
 };
 
-// Helper to upload buffer to Cloudinary with auto type detection
-const uploadToCloudinary = (buffer, folder) => {
-  // If credentials are placeholders, return a mock URL for local testing
-  if (
-    !process.env.CLOUDINARY_API_KEY ||
-    process.env.CLOUDINARY_API_KEY.includes("xxxx") ||
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    process.env.CLOUDINARY_CLOUD_NAME.includes("xxxx")
-  ) {
-    console.log("⚠️ Cloudinary placeholder keys detected. Returning mock upload URL for testing.");
-    return Promise.resolve({
-      secure_url: "https://res.cloudinary.com/demo/image/upload/v1234567890/sample.png",
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const options = {
-      folder,
-      resource_type: "auto",
-    };
-    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
-      if (error) reject(error);
-      else resolve(result);
-    });
-    stream.end(buffer);
-  });
-};
 
 // @desc    Get all unique conversations with partner info, last message, and unread counts
 // @route   GET /api/chat/conversations
@@ -54,43 +27,58 @@ exports.getConversations = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    // Get all distinct messages sent or received by this user
+    // Get latest message per conversation partner using a grouped subquery (avoids full table scan)
+    const latestMessages = await Message.findAll({
+      attributes: [
+        [literal("LEAST(senderId, receiverId)"), "userA"],
+        [literal("GREATEST(senderId, receiverId)"), "userB"],
+        [fn("MAX", col("id")), "maxId"],
+      ],
+      where: { [Op.or]: [{ senderId: userId }, { receiverId: userId }] },
+      group: [literal("LEAST(senderId, receiverId)"), literal("GREATEST(senderId, receiverId)")],
+      raw: true,
+    });
+
+    if (latestMessages.length === 0) return res.json([]);
+
+    // Fetch the actual latest messages by their IDs
+    const maxIds = latestMessages.map((row) => row.maxId);
     const messages = await Message.findAll({
-      where: {
-        [Op.or]: [{ senderId: userId }, { receiverId: userId }],
-      },
+      where: { id: { [Op.in]: maxIds } },
       order: [["createdAt", "DESC"]],
     });
 
-    // Build conversation map keyed by partnerId
+    // Count unread messages per partner for the current user
+    const unreadCounts = await Message.findAll({
+      attributes: ["senderId", [fn("COUNT", col("id")), "count"]],
+      where: { receiverId: userId, isRead: false },
+      group: ["senderId"],
+      raw: true,
+    });
+    const unreadMap = {};
+    for (const row of unreadCounts) {
+      unreadMap[row.senderId] = parseInt(row.count, 10);
+    }
+
+    // Build conversation map
     const convMap = {};
     for (const msg of messages) {
       const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
-      if (!convMap[partnerId]) {
-        // Return a clean representation of the last message
-        let lastMsgText = msg.content || "";
-        if (!lastMsgText && msg.type && msg.type !== "text") {
-          lastMsgText = `[${msg.type.charAt(0).toUpperCase() + msg.type.slice(1)}]`;
-        }
-        
-        convMap[partnerId] = {
-          _id: partnerId.toString(),
-          receiverId: partnerId.toString(),
-          lastMessage: lastMsgText,
-          time: msg.createdAt,
-          unreadCount: 0,
-        };
+      let lastMsgText = msg.content || "";
+      if (!lastMsgText && msg.type && msg.type !== "text") {
+        lastMsgText = `[${msg.type.charAt(0).toUpperCase() + msg.type.slice(1)}]`;
       }
-      // Count unread messages sent TO the current user from this partner
-      if (!msg.isRead && msg.receiverId === userId && msg.senderId === partnerId) {
-        convMap[partnerId].unreadCount += 1;
-      }
+      convMap[partnerId] = {
+        _id: partnerId.toString(),
+        receiverId: partnerId.toString(),
+        lastMessage: lastMsgText,
+        time: msg.createdAt,
+        unreadCount: unreadMap[partnerId] || 0,
+      };
     }
 
     // Fetch partner details
     const partnerIds = Object.keys(convMap).map(Number);
-    if (partnerIds.length === 0) return res.json([]);
-
     const partners = await User.findAll({
       where: { id: { [Op.in]: partnerIds } },
       attributes: ["id", "name", "role", "isOnline"],
