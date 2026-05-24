@@ -102,6 +102,6 @@ router.put("/messages/read", chatController.markAsRead);
  *       201:
  *         description: Message sent successfully
  */
-router.post("/send", upload.any(), chatController.sendMessage);
+router.post("/send", upload.single("file"), chatController.sendMessage);
 
 module.exports = router;

@@ -187,9 +187,6 @@ exports.markAsRead = async (req, res, next) => {
 // @route   POST /api/chat/send
 exports.sendMessage = async (req, res, next) => {
   try {
-    if (req.files && req.files.length > 0) {
-      req.file = req.files[0];
-    }
     const senderId = req.user.id;
     let { receiverId, content, type, durationMs } = req.body;
 
@@ -220,10 +217,10 @@ exports.sendMessage = async (req, res, next) => {
         return res.status(500).json({ message: `Media upload failed: ${uploadError.message}` });
       }
     } else {
+      // No file attached — require content for text messages
       if (!content) {
         return res.status(400).json({ message: "Content is required for text messages" });
       }
-      finalType = "text";
     }
 
     const message = await Message.create({
