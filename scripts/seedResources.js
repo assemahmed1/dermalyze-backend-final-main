@@ -62,56 +62,56 @@ const seedData = async () => {
         description: "The most serious type of skin cancer, developing in the melanocytes that produce pigment.",
         symptoms: ["Changing moles", "Irregular borders", "Asymmetrical shapes", "Multiple colors"],
         treatments: ["Surgical excision", "Immunotherapy", "Radiation therapy", "Targeted therapy"],
-        imageUrl: "https://example.com/images/melanoma.jpg"
+        imageUrl: ""
       },
       {
         name: "Psoriasis",
         description: "A chronic autoimmune condition where skin cells build up quickly, forming scales and itchy, dry patches.",
         symptoms: ["Red patches with silvery scales", "Dry cracked skin", "Itching or burning"],
         treatments: ["Topical corticosteroids", "Phototherapy", "Biologic medications", "Moisturizers"],
-        imageUrl: "https://example.com/images/psoriasis.jpg"
+        imageUrl: ""
       },
       {
         name: "Eczema (Atopic Dermatitis)",
         description: "A condition that makes your skin red and itchy. Common in children but can occur at any age.",
         symptoms: ["Dry skin", "Itching", "Red to brownish-gray patches", "Small raised bumps"],
         treatments: ["Moisturizing regularly", "Topical steroids", "Avoiding triggers", "Antihistamines"],
-        imageUrl: "https://example.com/images/eczema.jpg"
+        imageUrl: ""
       },
       {
         name: "Acne Vulgaris",
         description: "A common skin condition from plugged hair follicles.",
         symptoms: ["Whiteheads", "Blackheads", "Pimples", "Painful lumps under skin"],
         treatments: ["Benzoyl peroxide", "Salicylic acid", "Retinoids", "Antibiotics"],
-        imageUrl: "https://example.com/images/acne.jpg"
+        imageUrl: ""
       },
       {
         name: "Rosacea",
         description: "A long-term skin condition affecting the face.",
         symptoms: ["Facial redness", "Swollen red bumps", "Eye problems", "Enlarged nose"],
         treatments: ["Topical gels", "Oral antibiotics", "Laser therapy", "Avoiding triggers"],
-        imageUrl: "https://example.com/images/rosacea.jpg"
+        imageUrl: ""
       },
       {
         name: "Basal Cell Carcinoma",
         description: "A type of skin cancer beginning in the basal cells.",
         symptoms: ["Pearly or waxy bump", "Flat scar-like lesion", "Bleeding or scabbing sore"],
         treatments: ["Mohs surgery", "Curettage and electrodesiccation", "Cryotherapy"],
-        imageUrl: "https://example.com/images/bcc.jpg"
+        imageUrl: ""
       },
       {
         name: "Actinic Keratosis",
         description: "A rough scaly patch from years of sun exposure.",
         symptoms: ["Rough dry scaly patch", "Flat to slightly raised bump", "Itching or burning"],
         treatments: ["Cryotherapy", "Topical creams (Fluorouracil)", "Photodynamic therapy"],
-        imageUrl: "https://example.com/images/ak.jpg"
+        imageUrl: ""
       },
       {
         name: "Squamous Cell Carcinoma",
         description: "Skin cancer in the squamous cells.",
         symptoms: ["Firm red nodule", "Flat lesion with scaly surface", "New sore on old scar"],
         treatments: ["Excisional surgery", "Mohs surgery", "Radiation therapy"],
-        imageUrl: "https://example.com/images/scc.jpg"
+        imageUrl: ""
       }
     ];
 
