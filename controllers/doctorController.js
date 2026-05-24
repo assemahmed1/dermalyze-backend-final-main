@@ -120,6 +120,12 @@ exports.getPatientDetails = async (req, res, next) => {
     // 2. Fetch the corresponding clinical Patient record
     const patientClinical = await Patient.findOne({ where: { userId: user.id } });
 
+    // Fetch medications for this patient
+    const Medication = require("../models/Medication");
+    const medications = patientClinical 
+      ? await Medication.findAll({ where: { patientId: patientClinical.id }, order: [["createdAt", "DESC"]] })
+      : [];
+
     // 3. Assemble detailed patient object
     const detailedPatient = {
       id: user.id.toString(),
@@ -136,7 +142,8 @@ exports.getPatientDetails = async (req, res, next) => {
       recoveryProgress: patientClinical ? patientClinical.recoveryProgress : 0,
       medicalHistory: patientClinical ? patientClinical.medicalHistory : "",
       nextAppointment: patientClinical ? patientClinical.nextAppointment : null,
-      lastVisit: patientClinical ? patientClinical.lastVisit : null
+      lastVisit: patientClinical ? patientClinical.lastVisit : null,
+      medications: medications
     };
 
     res.json({ patient: detailedPatient });

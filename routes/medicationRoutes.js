@@ -9,6 +9,7 @@ const {
   getPatientMedications,
   updateMedication,
   deleteMedication,
+  getMyMedications,
 } = require("../controllers/medicationController");
 
 /**
@@ -57,6 +58,16 @@ router.post("/patient/:patientId/medications", auth, requireRole("doctor"), requ
  *           type: string
  */
 router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patient"), requireVerifiedDoctor, getPatientMedications);
+
+/**
+ * @swagger
+ * /patient/my/medications:
+ *   get:
+ *     summary: Get my medications (for patient)
+ *     tags: [Medications]
+ */
+router.get("/patient/my/medications", auth, requireRole("patient"), getMyMedications);
+router.get("/patient/my-medications", auth, requireRole("patient"), getMyMedications);
 
 /**
  * @swagger

@@ -48,3 +48,20 @@ exports.deleteMedication = async (req, res, next) => {
     res.json({ message: "Medication deleted" });
   } catch (error) { next(error); }
 };
+
+// GET /api/patient/my-medications
+exports.getMyMedications = async (req, res, next) => {
+  try {
+    // 1. Get the patient record for the logged-in user
+    const patient = await Patient.findOne({ where: { userId: req.user.id } });
+    if (!patient) return res.json([]); // return empty array if no clinical record yet
+    
+    // 2. Fetch their medications
+    const medications = await Medication.findAll({ 
+      where: { patientId: patient.id }, 
+      order: [["createdAt", "DESC"]] 
+    });
+    
+    res.json(medications);
+  } catch (error) { next(error); }
+};
