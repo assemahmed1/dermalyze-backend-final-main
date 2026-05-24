@@ -84,10 +84,8 @@ const reviewRules = [
 const appointmentRules = [
   body("patientName").trim().notEmpty().withMessage("Patient name is required"),
   body("diagnosis").trim().notEmpty().withMessage("Diagnosis is required"),
-  body("appointmentDate").isISO8601().withMessage("Valid appointment date is required"),
-  body("appointmentTime")
-    .matches(/^([01]\d|2[0-3]):?([0-5]\d)$/)
-    .withMessage("Valid appointment time is required (HH:MM)")
+  body("appointmentDate").trim().notEmpty().withMessage("Valid appointment date is required"),
+  body("appointmentTime").trim().notEmpty().withMessage("Valid appointment time is required")
 ];
 
 // Appointment status update validation rules
