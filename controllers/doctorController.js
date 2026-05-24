@@ -269,23 +269,38 @@ exports.createAppointment = async (req, res, next) => {
     const { patientId } = req.params;
     const { patientName, diagnosis, appointmentDate, appointmentTime } = req.body;
 
-    // Verify patient belongs to doctor
+    // 1. Basic validation
+    if (!appointmentDate || !appointmentTime) {
+      return res.status(400).json({ message: "Appointment date and time are required." });
+    }
+
+    // 2. Verify patient belongs to doctor
     const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found or unauthorized access" });
     }
 
+    // 3. Create the new appointment
     const appointment = await Appointment.create({
       patientId: patient.id,
       doctorId: req.user.id,
-      patientName,
-      diagnosis,
+      patientName: patientName || patient.name,
+      diagnosis: diagnosis || patient.diagnosis,
       appointmentDate,
       appointmentTime,
     });
 
-    res.status(201).json(appointment);
+    // 4. (Optional) Update the patient's next appointment date for quick access
+    patient.nextAppointment = `${appointmentDate} at ${appointmentTime}`;
+    await patient.save();
+
+    // 5. Return success
+    return res.status(201).json({
+      message: "Follow-up appointment scheduled successfully.",
+      appointment: appointment
+    });
   } catch (error) {
+    console.error("Error scheduling appointment:", error);
     next(error);
   }
 };

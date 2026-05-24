@@ -61,6 +61,10 @@ const Patient = sequelize.define(
       references: { model: "Users", key: "id" },
       unique: true,
     },
+    nextAppointment: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
   },
   {
     tableName: "Patients",
