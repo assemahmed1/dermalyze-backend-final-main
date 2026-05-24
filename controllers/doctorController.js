@@ -102,6 +102,48 @@ exports.getPatientAnalyses = async (req, res, next) => {
   }
 };
 
+// GET /doctor/patients/:id
+exports.getPatientDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // 1. Find the User record
+    const user = await User.findOne({
+      where: { id, role: "patient", doctorId: req.user.id },
+      attributes: { exclude: ["password", "resetPasswordOTP", "resetPasswordOTPExpires", "twoFactorSecret"] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Patient not found or unauthorized access" });
+    }
+
+    // 2. Fetch the corresponding clinical Patient record
+    const patientClinical = await Patient.findOne({ where: { userId: user.id } });
+
+    // 3. Assemble detailed patient object
+    const detailedPatient = {
+      id: user.id.toString(),
+      name: user.name,
+      email: user.email,
+      phone: user.phone || "",
+      diagnosis: user.diagnosis || null,
+      allergies: user.allergies || null,
+      isCritical: user.isCritical || false,
+      dateOfBirth: user.dateOfBirth || "",
+      nationalId: user.nationalId || "",
+      // Clinical fields
+      status: patientClinical ? patientClinical.status : (user.isCritical ? "Critical" : "Stable"),
+      recoveryProgress: patientClinical ? patientClinical.recoveryProgress : 0,
+      medicalHistory: patientClinical ? patientClinical.medicalHistory : "",
+      nextAppointment: patientClinical ? patientClinical.nextAppointment : null
+    };
+
+    res.json({ patient: detailedPatient });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ✅ Doctor Stats — Total / Critical / Active
 exports.getDoctorStats = async (req, res, next) => {
   try {

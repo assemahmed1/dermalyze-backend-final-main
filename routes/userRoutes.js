@@ -37,6 +37,18 @@ router.use(protect); // All routes below require JWT auth
 
 /**
  * @swagger
+ * /user/profile:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [User]
+ *     responses:
+ *       200:
+ *         description: Profile data
+ */
+router.get("/profile", userController.getProfile);
+
+/**
+ * @swagger
  * /user/notification-preferences:
  *   put:
  *     summary: Update notification preferences

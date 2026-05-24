@@ -106,7 +106,10 @@ exports.register = async (req, res) => {
         doctorCode: user.doctorCode || "",
         doctorId: user.doctorId ? user.doctorId.toString() : "",
         diagnosis: user.diagnosis || null,
-        allergies: user.allergies || null
+        allergies: user.allergies || null,
+        specialization: user.specialization || null,
+        licenseNumber: user.licenseNumber || null,
+        experience: user.experience || null
       }
     });
 
@@ -252,7 +255,10 @@ exports.login = async (req, res) => {
         doctorCode: user.doctorCode || "",
         doctorId: user.doctorId ? user.doctorId.toString() : "",
         diagnosis: user.diagnosis || null,
-        allergies: user.allergies || null
+        allergies: user.allergies || null,
+        specialization: user.specialization || null,
+        licenseNumber: user.licenseNumber || null,
+        experience: user.experience || null
       }
     });
 

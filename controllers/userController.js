@@ -9,6 +9,24 @@ const Medication = require("../models/Medication");
 const speakeasy = require("speakeasy");
 const qrcode = require("qrcode");
 
+// @desc    Get current user profile (Doctor/Patient)
+// @route   GET /api/user/profile
+exports.getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password", "resetPasswordOTP", "resetPasswordOTPExpires", "twoFactorSecret"] }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ [user.role === "doctor" ? "doctor" : "patient"]: user });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update notification preferences
 // @route   PUT /api/user/notification-preferences
 exports.updateNotificationPreferences = async (req, res, next) => {

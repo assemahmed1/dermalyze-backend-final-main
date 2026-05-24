@@ -28,6 +28,21 @@ router.get("/doctor/patients", auth, requireRole("doctor"), requireVerifiedDocto
 
 /**
  * @swagger
+ * /doctor/patients/{id}:
+ *   get:
+ *     summary: Get specific patient detailed view
+ *     tags: [Doctor]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ */
+router.get("/doctor/patients/:id", auth, requireRole("doctor"), requireVerifiedDoctor, validateObjectId("id"), doctorController.getPatientDetails);
+
+/**
+ * @swagger
  * /doctor/patient/{id}/analyses:
  *   get:
  *     summary: Get analyses of a specific patient

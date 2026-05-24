@@ -62,6 +62,18 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       defaultValue: null,
     },
+    specialization: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    licenseNumber: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    experience: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
     isCritical: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
