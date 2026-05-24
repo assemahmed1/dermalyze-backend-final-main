@@ -36,12 +36,13 @@ WORKDIR /app
 # 6. Install Python Dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
     dlib \
     face_recognition \
     pytesseract \
     pillow \
     torch \
-    torchvision --index-url https://download.pytorch.org/whl/cpu
+    torchvision
  
 # 7. Install Node.js Dependencies
 COPY package*.json ./
