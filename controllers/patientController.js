@@ -70,7 +70,10 @@ const updatePatientStatus = async (req, res, next) => {
     patient.status = status;
     await patient.save();
 
-    res.json(patient);
+    res.status(200).json({ 
+      message: "Patient status updated successfully", 
+      patient: patient 
+    });
   } catch (error) {
     next(error);
   }
