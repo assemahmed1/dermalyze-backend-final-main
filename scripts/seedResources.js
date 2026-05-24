@@ -62,56 +62,63 @@ const seedData = async () => {
         description: "The most serious type of skin cancer, developing in the melanocytes that produce pigment.",
         symptoms: ["Changing moles", "Irregular borders", "Asymmetrical shapes", "Multiple colors"],
         treatments: ["Surgical excision", "Immunotherapy", "Radiation therapy", "Targeted therapy"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/melanoma___moles_apica5"
       },
       {
         name: "Psoriasis",
         description: "A chronic autoimmune condition where skin cells build up quickly, forming scales and itchy, dry patches.",
         symptoms: ["Red patches with silvery scales", "Dry cracked skin", "Itching or burning"],
         treatments: ["Topical corticosteroids", "Phototherapy", "Biologic medications", "Moisturizers"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/psoriasis___lichen_planus_zt0ody"
       },
       {
         name: "Eczema (Atopic Dermatitis)",
         description: "A condition that makes your skin red and itchy. Common in children but can occur at any age.",
         symptoms: ["Dry skin", "Itching", "Red to brownish-gray patches", "Small raised bumps"],
         treatments: ["Moisturizing regularly", "Topical steroids", "Avoiding triggers", "Antihistamines"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/atopic_dermatitis_qbopj9"
+      },
+      {
+        name: "Acne & Rosacea",
+        description: "A combination or overlap of acne and rosacea symptoms on the face.",
+        symptoms: ["Facial redness", "Pimples", "Swollen red bumps", "Enlarged nose"],
+        treatments: ["Topical gels", "Oral antibiotics", "Laser therapy", "Avoiding triggers"],
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/acne_dalpmt"
       },
       {
         name: "Acne Vulgaris",
         description: "A common skin condition from plugged hair follicles.",
         symptoms: ["Whiteheads", "Blackheads", "Pimples", "Painful lumps under skin"],
         treatments: ["Benzoyl peroxide", "Salicylic acid", "Retinoids", "Antibiotics"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/acne_dalpmt"
       },
       {
         name: "Rosacea",
         description: "A long-term skin condition affecting the face.",
         symptoms: ["Facial redness", "Swollen red bumps", "Eye problems", "Enlarged nose"],
         treatments: ["Topical gels", "Oral antibiotics", "Laser therapy", "Avoiding triggers"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/rosacea_v7yv0t"
       },
       {
         name: "Basal Cell Carcinoma",
         description: "A type of skin cancer beginning in the basal cells.",
         symptoms: ["Pearly or waxy bump", "Flat scar-like lesion", "Bleeding or scabbing sore"],
         treatments: ["Mohs surgery", "Curettage and electrodesiccation", "Cryotherapy"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/basal_cell_carcinoma_n3r4u5"
       },
       {
         name: "Actinic Keratosis",
         description: "A rough scaly patch from years of sun exposure.",
         symptoms: ["Rough dry scaly patch", "Flat to slightly raised bump", "Itching or burning"],
         treatments: ["Cryotherapy", "Topical creams (Fluorouracil)", "Photodynamic therapy"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/actinic_keratosis___skin_cancer_hql0yg"
       },
       {
         name: "Squamous Cell Carcinoma",
         description: "Skin cancer in the squamous cells.",
         symptoms: ["Firm red nodule", "Flat lesion with scaly surface", "New sore on old scar"],
         treatments: ["Excisional surgery", "Mohs surgery", "Radiation therapy"],
-        imageUrl: ""
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/squamous_cell_carcinoma_q8w9z0"
       }
     ];
 
