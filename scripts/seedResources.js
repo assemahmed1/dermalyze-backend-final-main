@@ -97,14 +97,14 @@ const seedData = async () => {
         description: "A long-term skin condition affecting the face.",
         symptoms: ["Facial redness", "Swollen red bumps", "Eye problems", "Enlarged nose"],
         treatments: ["Topical gels", "Oral antibiotics", "Laser therapy", "Avoiding triggers"],
-        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/rosacea_v7yv0t"
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/acne_dalpmt"
       },
       {
         name: "Basal Cell Carcinoma",
         description: "A type of skin cancer beginning in the basal cells.",
         symptoms: ["Pearly or waxy bump", "Flat scar-like lesion", "Bleeding or scabbing sore"],
         treatments: ["Mohs surgery", "Curettage and electrodesiccation", "Cryotherapy"],
-        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/basal_cell_carcinoma_n3r4u5"
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/actinic_keratosis___skin_cancer_hql0yg"
       },
       {
         name: "Actinic Keratosis",
@@ -118,7 +118,7 @@ const seedData = async () => {
         description: "Skin cancer in the squamous cells.",
         symptoms: ["Firm red nodule", "Flat lesion with scaly surface", "New sore on old scar"],
         treatments: ["Excisional surgery", "Mohs surgery", "Radiation therapy"],
-        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/squamous_cell_carcinoma_q8w9z0"
+        imageUrl: "https://res.cloudinary.com/daraqfmov/image/upload/actinic_keratosis___skin_cancer_hql0yg"
       }
     ];
 
