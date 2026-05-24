@@ -82,8 +82,8 @@ const reviewRules = [
 
 // Appointment creation validation rules
 const appointmentRules = [
-  body("patientName").trim().notEmpty().withMessage("Patient name is required"),
-  body("diagnosis").trim().notEmpty().withMessage("Diagnosis is required"),
+  body("patientName").optional().isString().withMessage("Patient name must be a string"),
+  body("diagnosis").optional({ checkFalsy: true }).isString().withMessage("Diagnosis must be a string"),
   body("appointmentDate").trim().notEmpty().withMessage("Valid appointment date is required"),
   body("appointmentTime").trim().notEmpty().withMessage("Valid appointment time is required")
 ];
