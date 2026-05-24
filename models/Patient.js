@@ -65,6 +65,10 @@ const Patient = sequelize.define(
       type: DataTypes.STRING,
       defaultValue: null,
     },
+    lastVisit: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
   },
   {
     tableName: "Patients",

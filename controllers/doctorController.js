@@ -135,7 +135,8 @@ exports.getPatientDetails = async (req, res, next) => {
       status: patientClinical ? patientClinical.status : (user.isCritical ? "Critical" : "Stable"),
       recoveryProgress: patientClinical ? patientClinical.recoveryProgress : 0,
       medicalHistory: patientClinical ? patientClinical.medicalHistory : "",
-      nextAppointment: patientClinical ? patientClinical.nextAppointment : null
+      nextAppointment: patientClinical ? patientClinical.nextAppointment : null,
+      lastVisit: patientClinical ? patientClinical.lastVisit : null
     };
 
     res.json({ patient: detailedPatient });
@@ -332,8 +333,10 @@ exports.createAppointment = async (req, res, next) => {
       appointmentTime,
     });
 
-    // 4. (Optional) Update the patient's next appointment date for quick access
+    // 4. Update the patient's next appointment date and last visit
     patient.nextAppointment = `${appointmentDate} at ${appointmentTime}`;
+    // The user requested that the day the appointment was scheduled becomes the "last visit" date
+    patient.lastVisit = new Date().toISOString().split('T')[0]; 
     await patient.save();
 
     // 5. Return success

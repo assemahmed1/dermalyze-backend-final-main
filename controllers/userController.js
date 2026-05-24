@@ -21,7 +21,20 @@ exports.getProfile = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ [user.role === "doctor" ? "doctor" : "patient"]: user });
+    let profileData = user.toJSON();
+    
+    // If it's a patient, get their clinical details
+    if (user.role === "patient") {
+      const patientClinical = await Patient.findOne({ where: { userId: user.id } });
+      if (patientClinical) {
+        profileData.nextAppointment = patientClinical.nextAppointment;
+        profileData.lastVisit = patientClinical.lastVisit;
+        profileData.recoveryProgress = patientClinical.recoveryProgress;
+        profileData.status = patientClinical.status;
+      }
+    }
+
+    res.json({ [user.role === "doctor" ? "doctor" : "patient"]: profileData });
   } catch (error) {
     next(error);
   }
