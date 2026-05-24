@@ -7,7 +7,7 @@ const cloudinary = require("../config/cloudinary");
  * @param {object} options - Additional Cloudinary upload options
  * @returns {Promise<object>} Cloudinary upload result
  */
-function uploadToCloudinary(buffer, folder, options = {}) {
+function uploadToCloudinary(buffer, folder, options = {}, mimetype = "image/jpeg") {
   // If credentials are placeholders, return a mock URL for local testing
   if (
     !process.env.CLOUDINARY_API_KEY ||
@@ -21,11 +21,14 @@ function uploadToCloudinary(buffer, folder, options = {}) {
     });
   }
 
+  const resourceType = mimetype.startsWith("audio/") || mimetype.startsWith("video/") ? "video" : "image";
+
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        transformation: [{ width: 1024, height: 1024, crop: "limit" }],
+        resource_type: resourceType,
+        transformation: resourceType === "image" ? [{ width: 1024, height: 1024, crop: "limit" }] : undefined,
         ...options
       },
       (error, result) => (error ? reject(error) : resolve(result))

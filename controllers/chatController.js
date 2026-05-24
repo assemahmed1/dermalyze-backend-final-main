@@ -201,7 +201,7 @@ exports.sendMessage = async (req, res, next) => {
 
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, "dermalyze/chat");
+        const uploadResult = await uploadToCloudinary(req.file.buffer, "dermalyze/chat", {}, req.file.mimetype);
         mediaUrl = uploadResult.secure_url;
 
         if (!["image", "audio", "file"].includes(finalType)) {
