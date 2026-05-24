@@ -57,7 +57,13 @@ const getPatientById = async (req, res, next) => {
 
 const updatePatientStatus = async (req, res, next) => {
   try {
-    const { status } = req.body;
+    let { status } = req.body;
+
+    if (status) {
+      // Normalize status to Title Case (e.g. "critical" -> "Critical")
+      status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    }
+
     const allowedStatuses = ["Improving", "Stable", "Critical"];
 
     if (status && !allowedStatuses.includes(status)) {
@@ -69,6 +75,15 @@ const updatePatientStatus = async (req, res, next) => {
 
     patient.status = status;
     await patient.save();
+
+    // Also sync the `isCritical` flag in the User table if it exists
+    if (patient.userId) {
+      const User = require("../models/User");
+      await User.update(
+        { isCritical: status === "Critical" },
+        { where: { id: patient.userId } }
+      );
+    }
 
     res.status(200).json({ 
       message: "Patient status updated successfully", 

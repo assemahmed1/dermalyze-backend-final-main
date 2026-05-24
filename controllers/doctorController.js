@@ -42,14 +42,32 @@ exports.getPatients = async (req, res, next) => {
       offset
     });
 
-    const formattedPatients = patients.map(p => ({
-      id: p.id.toString(),
-      name: p.name,
-      email: p.email,
-      phone: p.phone || "",
-      diagnosis: p.diagnosis || null,
-      isCritical: p.isCritical || false
-    }));
+    // Fetch their corresponding clinical Patient records to get the status
+    const userIds = patients.map(p => p.id);
+    const clinicalPatients = await Patient.findAll({ where: { userId: userIds } });
+    
+    const statusMap = {};
+    clinicalPatients.forEach(cp => {
+      statusMap[cp.userId] = cp.status;
+    });
+
+    const formattedPatients = patients.map(p => {
+      // Determine status from clinical table if exists, otherwise fallback to User's isCritical flag
+      let status = statusMap[p.id];
+      if (!status) {
+        status = p.isCritical ? "Critical" : "Stable";
+      }
+
+      return {
+        id: p.id.toString(),
+        name: p.name,
+        email: p.email,
+        phone: p.phone || "",
+        diagnosis: p.diagnosis || null,
+        isCritical: p.isCritical || false,
+        status: status // <-- Crucial for the Flutter App filtering
+      };
+    });
 
     res.json({
       patients: formattedPatients,
