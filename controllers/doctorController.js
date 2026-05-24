@@ -46,17 +46,15 @@ exports.getPatients = async (req, res, next) => {
     const userIds = patients.map(p => p.id);
     const clinicalPatients = await Patient.findAll({ where: { userId: userIds } });
     
-    const statusMap = {};
+    const clinicalPatientsMap = {};
     clinicalPatients.forEach(cp => {
-      statusMap[cp.userId] = cp.status;
+      clinicalPatientsMap[cp.userId] = cp;
     });
 
     const formattedPatients = patients.map(p => {
       // Determine status from clinical table if exists, otherwise fallback to User's isCritical flag
-      let status = statusMap[p.id];
-      if (!status) {
-        status = p.isCritical ? "Critical" : "Stable";
-      }
+      const cp = clinicalPatientsMap[p.id];
+      let status = cp ? cp.status : (p.isCritical ? "Critical" : "Stable");
 
       return {
         id: p.id.toString(),
@@ -65,7 +63,9 @@ exports.getPatients = async (req, res, next) => {
         phone: p.phone || "",
         diagnosis: p.diagnosis || null,
         isCritical: p.isCritical || false,
-        status: status // <-- Crucial for the Flutter App filtering
+        status: status, // <-- Crucial for the Flutter App filtering
+        lastVisit: cp ? cp.lastVisit : null,
+        nextAppointment: cp ? cp.nextAppointment : null
       };
     });
 
@@ -339,10 +339,37 @@ exports.createAppointment = async (req, res, next) => {
     patient.lastVisit = new Date().toISOString().split('T')[0]; 
     await patient.save();
 
+    // -- REAL-TIME NOTIFICATION (The "Normal App" behavior) --
+    const User = require("../models/User");
+    const patientUser = await User.findByPk(patient.userId);
+    
+    // 1. Emit Socket.io Event for live update
+    const { getIO } = require("../services/socketHandler");
+    const io = getIO();
+    if (io && patientUser) {
+      io.to(String(patientUser.id)).emit("profile_updated", {
+        nextAppointment: patient.nextAppointment,
+        lastVisit: patient.lastVisit,
+        message: "A new follow-up appointment was scheduled."
+      });
+    }
+
+    // 2. Send Push Notification
+    if (patientUser && patientUser.fcmToken && patientUser.pushNotifications !== false) {
+      const { sendPushNotification } = require("../services/notificationService");
+      sendPushNotification(patientUser.fcmToken, {
+        title: "New Appointment Scheduled",
+        body: `Dr. ${req.user.name} scheduled your next visit for ${appointmentDate} at ${appointmentTime}.`,
+        data: { type: "appointment" }
+      }).catch(err => console.error("[FCM Error]", err));
+    }
+    // ---------------------------------------------------------
+
     // 5. Return success
     return res.status(201).json({
       message: "Follow-up appointment scheduled successfully.",
-      appointment: appointment
+      appointment: appointment,
+      patient: patient
     });
   } catch (error) {
     console.error("Error scheduling appointment:", error);

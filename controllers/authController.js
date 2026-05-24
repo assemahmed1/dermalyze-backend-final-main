@@ -92,6 +92,20 @@ exports.register = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    let patientData = {};
+    if (user.role === "patient") {
+      const Patient = require("../models/Patient");
+      const clinical = await Patient.findOne({ where: { userId: user.id } });
+      if (clinical) {
+        patientData = {
+          nextAppointment: clinical.nextAppointment,
+          lastVisit: clinical.lastVisit,
+          recoveryProgress: clinical.recoveryProgress,
+          status: clinical.status
+        };
+      }
+    }
+
     res.status(201).json({
       message: "Success",
       token,
@@ -109,7 +123,8 @@ exports.register = async (req, res) => {
         allergies: user.allergies || null,
         specialization: user.specialization || null,
         licenseNumber: user.licenseNumber || null,
-        experience: user.experience || null
+        experience: user.experience || null,
+        ...patientData
       }
     });
 
@@ -241,6 +256,20 @@ exports.login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    let patientData = {};
+    if (user.role === "patient") {
+      const Patient = require("../models/Patient");
+      const clinical = await Patient.findOne({ where: { userId: user.id } });
+      if (clinical) {
+        patientData = {
+          nextAppointment: clinical.nextAppointment,
+          lastVisit: clinical.lastVisit,
+          recoveryProgress: clinical.recoveryProgress,
+          status: clinical.status
+        };
+      }
+    }
+
     res.json({
       message: "Success",
       token,
@@ -258,7 +287,8 @@ exports.login = async (req, res) => {
         allergies: user.allergies || null,
         specialization: user.specialization || null,
         licenseNumber: user.licenseNumber || null,
-        experience: user.experience || null
+        experience: user.experience || null,
+        ...patientData
       }
     });
 

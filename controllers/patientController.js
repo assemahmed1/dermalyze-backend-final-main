@@ -83,6 +83,28 @@ const updatePatientStatus = async (req, res, next) => {
         { isCritical: status === "Critical" },
         { where: { id: patient.userId } }
       );
+
+      // -- REAL-TIME NOTIFICATION --
+      const patientUser = await User.findByPk(patient.userId);
+      const { getIO } = require("../services/socketHandler");
+      const io = getIO();
+      if (io && patientUser) {
+        io.to(String(patientUser.id)).emit("profile_updated", {
+          status: status,
+          isCritical: status === "Critical",
+          message: `Your status has been updated to ${status}.`
+        });
+      }
+
+      if (patientUser && patientUser.fcmToken && patientUser.pushNotifications !== false) {
+        const { sendPushNotification } = require("../services/notificationService");
+        sendPushNotification(patientUser.fcmToken, {
+          title: "Status Updated",
+          body: `Dr. ${req.user.name} has updated your clinical status to ${status}.`,
+          data: { type: "status_update", status: status }
+        }).catch(err => console.error("[FCM Error]", err));
+      }
+      // ----------------------------
     }
 
     res.status(200).json({ 
