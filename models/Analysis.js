@@ -27,6 +27,18 @@ const Analysis = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    stage: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    severity: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    improvement: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.ENUM("processing", "completed", "failed"),
       defaultValue: "processing",

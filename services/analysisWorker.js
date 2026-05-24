@@ -1,5 +1,10 @@
 const { parentPort, workerData } = require("worker_threads");
 const cloudinary = require("cloudinary").v2;
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const https = require("https");
+const { spawn } = require("child_process");
 
 // Configure Cloudinary inside the worker
 cloudinary.config({
@@ -51,25 +56,97 @@ async function analyzeSkin(imageBuffer) {
   throw new Error("Unable to analyze image");
 }
 
+function downloadImage(url, dest) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, (response) => {
+      response.pipe(file);
+      file.on("finish", () => {
+        file.close(resolve);
+      });
+    }).on("error", (err) => {
+      fs.unlink(dest, () => reject(err));
+    });
+  });
+}
+
+function runPythonInference(currPath, prevPath) {
+  return new Promise((resolve, reject) => {
+    const args = [path.join(__dirname, "../scripts/inference.py")];
+    if (prevPath) args.push(prevPath);
+    args.push(currPath);
+
+    const py = spawn("python3", args);
+    let stdout = "";
+    let stderr = "";
+
+    py.stdout.on("data", (data) => { stdout += data.toString(); });
+    py.stderr.on("data", (data) => { stderr += data.toString(); });
+
+    py.on("close", (code) => {
+      if (code !== 0) return reject(new Error(stderr));
+      
+      const parts = stdout.trim().split(",");
+      if (parts.length === 1) {
+        resolve({ severityScore: parseFloat(parts[0]), improvementStr: null });
+      } else if (parts.length === 3) {
+        const improvement = parseFloat(parts[2]);
+        let improvementStr = "No change";
+        if (improvement > 0) improvementStr = `+${improvement}% improvement`;
+        else if (improvement < 0) improvementStr = `${improvement}% deterioration`;
+        resolve({ severityScore: parseFloat(parts[1]), improvementStr });
+      } else {
+        reject(new Error("Unexpected python output: " + stdout));
+      }
+    });
+  });
+}
+
+function getSeverityLabel(score) {
+  if (score < 0.33) return "Low";
+  if (score <= 0.66) return "Medium";
+  return "High";
+}
+
 async function run() {
+  let currPath = null;
+  let prevPath = null;
+
   try {
     const buffer = Buffer.from(workerData.imageBuffer);
     
-    const [uploadResult, aiResult] = await Promise.all([
+    // Save current image to temp file
+    currPath = path.join(os.tmpdir(), `curr_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`);
+    fs.writeFileSync(currPath, buffer);
+
+    // Download previous image if available
+    if (workerData.previousImageUrl) {
+      prevPath = path.join(os.tmpdir(), `prev_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`);
+      await downloadImage(workerData.previousImageUrl, prevPath);
+    }
+
+    const [uploadResult, aiResult, inferenceResult] = await Promise.all([
       uploadToCloudinary(buffer),
-      analyzeSkin(buffer)
+      analyzeSkin(buffer),
+      runPythonInference(currPath, prevPath)
     ]);
     
     parentPort.postMessage({
       success: true,
       imageUrl: uploadResult.secure_url,
-      result: aiResult
+      result: aiResult,
+      severity: getSeverityLabel(inferenceResult.severityScore),
+      improvement: inferenceResult.improvementStr
     });
   } catch (error) {
     parentPort.postMessage({
       success: false,
       error: error.message || "Unknown worker error"
     });
+  } finally {
+    // Cleanup temporary files
+    try { if (currPath && fs.existsSync(currPath)) fs.unlinkSync(currPath); } catch (_) {}
+    try { if (prevPath && fs.existsSync(prevPath)) fs.unlinkSync(prevPath); } catch (_) {}
   }
 }
 

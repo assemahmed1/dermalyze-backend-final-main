@@ -12,12 +12,29 @@ exports.createAnalysis = async (req, res) => {
     const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
 
+    // Fetch previous analyses to determine the stage and get the last image for comparison
+    const previousAnalyses = await Analysis.findAll({
+      where: { patientId: patient.id },
+      order: [["createdAt", "DESC"]]
+    });
+
+    let stageLabel = "Initial";
+    let previousImageUrl = null;
+
+    if (previousAnalyses.length > 0) {
+      stageLabel = `Follow up ${previousAnalyses.length}`;
+      previousImageUrl = previousAnalyses[0].imageUrl;
+    }
+
     // 1. Save to DB with status "processing" and null imageUrl initially
     const analysis = await Analysis.create({
       doctorId: req.user.id,
       patientId: patient.id,
       imageUrl: null,
       result: "Analysis in progress...",
+      stage: stageLabel,
+      severity: null,
+      improvement: null,
       status: "processing"
     });
 
@@ -31,7 +48,8 @@ exports.createAnalysis = async (req, res) => {
     // 3. Spawn background worker to perform Cloudinary upload and Hugging Face analysis
     const worker = new Worker(path.join(__dirname, "../services/analysisWorker.js"), {
       workerData: {
-        imageBuffer: req.file.buffer
+        imageBuffer: req.file.buffer,
+        previousImageUrl: previousImageUrl
       }
     });
 
@@ -41,6 +59,8 @@ exports.createAnalysis = async (req, res) => {
           // Update DB with results and permanent URL
           analysis.imageUrl = message.imageUrl;
           analysis.result = message.result;
+          analysis.severity = message.severity;
+          analysis.improvement = message.improvement;
           analysis.status = "completed";
           await analysis.save();
 
@@ -55,6 +75,9 @@ exports.createAnalysis = async (req, res) => {
               doctorId: analysis.doctorId.toString(),
               imageUrl: analysis.imageUrl,
               result: analysis.result,
+              severity: analysis.severity,
+              improvement: analysis.improvement,
+              stage: analysis.stage,
               status: "completed",
               createdAt: analysis.createdAt
             };
