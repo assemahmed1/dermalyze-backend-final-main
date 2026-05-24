@@ -123,3 +123,23 @@ exports.deleteAccount = async (req, res, next) => {
     res.json({ message: "Account and all associated clinical data deleted permanently" });
   } catch (error) { next(error); }
 };
+
+// @desc    Update FCM Token for Push Notifications
+// @route   PUT /api/user/fcm-token
+exports.updateFCMToken = async (req, res, next) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ message: "fcmToken is required" });
+    }
+
+    await User.update(
+      { fcmToken },
+      { where: { id: req.user.id } }
+    );
+
+    res.json({ message: "FCM Token updated successfully" });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -126,4 +126,25 @@ router.post("/2fa/disable", userController.disable2FA);
  */
 router.delete("/account", userController.deleteAccount);
 
+/**
+ * @swagger
+ * /user/fcm-token:
+ *   put:
+ *     summary: Update Firebase Cloud Messaging (FCM) Token for Push Notifications
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fcmToken]
+ *             properties:
+ *               fcmToken: { type: string }
+ *     responses:
+ *       200:
+ *         description: FCM Token updated successfully
+ */
+router.put("/fcm-token", userController.updateFCMToken);
+
 module.exports = router;
