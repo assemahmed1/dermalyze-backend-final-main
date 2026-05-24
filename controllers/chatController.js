@@ -2,6 +2,7 @@ const { Op, fn, col, literal } = require("sequelize");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const { uploadToCloudinary } = require("../utils/cloudinaryUtils");
+const cloudinary = require("../config/cloudinary");
 const { sendPushNotification } = require("../services/notificationService");
 
 // Helper to format messages to return exact required fields
@@ -267,6 +268,49 @@ exports.sendMessage = async (req, res, next) => {
     }
 
     res.status(201).json(formatted);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete a message permanently (sender only)
+// @route   DELETE /api/chat/messages/:messageId
+exports.deleteMessage = async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user.id;
+
+    const message = await Message.findByPk(messageId);
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    if (message.senderId !== userId) {
+      return res.status(403).json({ message: "You are not authorized to delete this message" });
+    }
+
+    // Delete from Cloudinary if a media asset is attached
+    if (message.mediaUrl) {
+      try {
+        // Extract public_id: everything after "/upload/v<version>/" and before the file extension
+        // e.g. https://res.cloudinary.com/demo/image/upload/v1234567890/dermalyze/chat/abc123.mp3
+        //  → public_id = "dermalyze/chat/abc123"
+        const urlParts = message.mediaUrl.split("/upload/");
+        if (urlParts.length === 2) {
+          const afterUpload = urlParts[1]; // "v1234567890/dermalyze/chat/abc123.mp3"
+          const withoutVersion = afterUpload.replace(/^v\d+\//, ""); // "dermalyze/chat/abc123.mp3"
+          const publicId = withoutVersion.replace(/\.[^/.]+$/, ""); // "dermalyze/chat/abc123"
+          await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
+        }
+      } catch (cloudinaryError) {
+        // Log but do not block deletion — DB record must still be removed
+        console.error("[Cloudinary delete error]", cloudinaryError.message);
+      }
+    }
+
+    await message.destroy();
+
+    res.status(200).json({ message: "Message deleted successfully" });
   } catch (error) {
     next(error);
   }

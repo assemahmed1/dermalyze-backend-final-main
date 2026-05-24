@@ -103,5 +103,6 @@ router.put("/messages/read", chatController.markAsRead);
  *         description: Message sent successfully
  */
 router.post("/send", upload.single("file"), chatController.sendMessage);
+router.delete("/messages/:messageId", chatController.deleteMessage);
 
 module.exports = router;
