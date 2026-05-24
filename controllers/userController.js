@@ -34,7 +34,8 @@ exports.getProfile = async (req, res, next) => {
       }
     }
 
-    res.json({ [user.role === "doctor" ? "doctor" : "patient"]: profileData });
+    // The Flutter app specifically expects the key to be "profile"
+    res.json({ profile: profileData });
   } catch (error) {
     next(error);
   }
