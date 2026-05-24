@@ -273,6 +273,59 @@ exports.sendMessage = async (req, res, next) => {
   }
 };
 
+// @desc    Delete conversation (all messages between current user and receiver)
+// @route   DELETE /api/chat/conversations/:receiverId
+exports.deleteConversation = async (req, res, next) => {
+  try {
+    const { receiverId } = req.params;
+    const userId = req.user.id;
+
+    const messages = await Message.findAll({
+      where: {
+        [Op.or]: [
+          { senderId: userId, receiverId },
+          { senderId: receiverId, receiverId: userId },
+        ],
+      },
+    });
+
+    if (!messages || messages.length === 0) {
+      return res.status(404).json({ success: false, message: "Conversation not found" });
+    }
+
+    // Delete associated media from Cloudinary
+    for (const message of messages) {
+      if (message.mediaUrl) {
+        try {
+          const urlParts = message.mediaUrl.split("/upload/");
+          if (urlParts.length === 2) {
+            const afterUpload = urlParts[1];
+            const withoutVersion = afterUpload.replace(/^v\d+\//, "");
+            const publicId = withoutVersion.replace(/\.[^/.]+$/, "");
+            await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
+          }
+        } catch (cloudinaryError) {
+          console.error("[Cloudinary delete error in conversation]", cloudinaryError.message);
+        }
+      }
+    }
+
+    // Delete all messages from DB
+    await Message.destroy({
+      where: {
+        [Op.or]: [
+          { senderId: userId, receiverId },
+          { senderId: receiverId, receiverId: userId },
+        ],
+      },
+    });
+
+    res.status(200).json({ success: true, message: "Conversation deleted successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Delete a message permanently (sender only)
 // @route   DELETE /api/chat/messages/:messageId
 exports.deleteMessage = async (req, res, next) => {

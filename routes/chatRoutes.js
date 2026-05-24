@@ -33,6 +33,26 @@ router.get("/conversations", chatController.getConversations);
 
 /**
  * @swagger
+ * /chat/conversations/{receiverId}:
+ *   delete:
+ *     summary: Delete conversation (all messages between current user and receiver)
+ *     tags: [Chat]
+ *     parameters:
+ *       - in: path
+ *         name: receiverId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Conversation deleted successfully
+ *       404:
+ *         description: Conversation not found
+ */
+router.delete("/conversations/:receiverId", validateObjectId("receiverId"), chatController.deleteConversation);
+
+/**
+ * @swagger
  * /chat/messages/{receiverId}:
  *   get:
  *     summary: Get message history with a user (supports pagination)
