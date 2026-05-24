@@ -39,9 +39,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     dlib \
     face_recognition \
     pytesseract \
-    pillow \
-    torch \
-    torchvision --index-url https://download.pytorch.org/whl/cpu
+    pillow && \
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
  
 # 7. Install Node.js Dependencies
 COPY package*.json ./
