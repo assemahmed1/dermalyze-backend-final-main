@@ -51,6 +51,7 @@ exports.createAnalysis = async (req, res) => {
         workerData: {
           imageBuffer: req.file.buffer,
           previousImageUrl,
+          patientDiagnosis: patient.diagnosis || "Skin Condition",
         },
       }
     );

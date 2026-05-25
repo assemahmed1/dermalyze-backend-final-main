@@ -30,54 +30,8 @@ function uploadToCloudinary(buffer) {
   });
 }
 
-// ── Local Severity → Diagnosis Label Mapping ─────────────────────────────────
-// Maps the ResNet-18 severity score (0.0–1.0) to a human-readable skin
-// condition label and confidence estimate. No external API dependency.
-function mapSeverityToLabel(score) {
-  // Generate a deterministic dynamic confidence between 0.75 and 0.95 based on the raw score
-  // This makes the confidence look realistic instead of a hardcoded constant per bucket.
-  const variance = ((score * 1000) % 21) / 100; 
-  let dynamicConfidence = parseFloat((0.75 + variance).toFixed(2));
-  if (dynamicConfidence > 0.99) dynamicConfidence = 0.99;
-
-  if (score <= 0.20) {
-    return {
-      label: "Mild Contact Dermatitis",
-      confidence: dynamicConfidence,
-      recommendation: "Apply moisturizing cream and avoid irritants. Monitor the area for 7 days.",
-    };
-  } else if (score <= 0.40) {
-    return {
-      label: "Mild Psoriasis",
-      confidence: dynamicConfidence,
-      recommendation: "Use prescribed topical corticosteroids. Schedule a follow-up in 2 weeks.",
-    };
-  } else if (score <= 0.55) {
-    return {
-      label: "Moderate Seborrheic Dermatitis",
-      confidence: dynamicConfidence,
-      recommendation: "Apply antifungal shampoo and cream. Continue current treatment plan.",
-    };
-  } else if (score <= 0.70) {
-    return {
-      label: "Moderate Inflammatory Acne",
-      confidence: dynamicConfidence,
-      recommendation: "Consider oral antibiotics if topical treatment is insufficient. Reassess in 3 weeks.",
-    };
-  } else if (score <= 0.85) {
-    return {
-      label: "Severe Eczema (Atopic Dermatitis)",
-      confidence: dynamicConfidence,
-      recommendation: "Initiate systemic therapy. Refer to dermatology specialist if symptoms persist.",
-    };
-  } else {
-    return {
-      label: "Severe Inflammatory Skin Condition",
-      confidence: dynamicConfidence,
-      recommendation: "Urgent dermatology referral required. Consider biopsy for differential diagnosis.",
-    };
-  }
-}
+// The AI model is strictly for measuring severity and improvement.
+// The diagnosis label is provided by the doctor in the patient's medical record.
 
 // ── Severity Label (Low / Medium / High) ─────────────────────────────────────
 function getSeverityLabel(score) {
@@ -186,19 +140,16 @@ async function run() {
       runPythonInference(currPath, prevPath),
     ]);
 
-    // Map severity score to diagnosis label and recommendation (local — no external API)
-    const labelData = mapSeverityToLabel(inferenceResult.severityScore);
-
-    // Build final result string (kept for backward compat with `analysis.result` column)
-    const resultString = labelData.label;
+    // Use the doctor's predefined diagnosis from the patient record
+    const doctorDiagnosis = workerData.patientDiagnosis || "Skin Condition Analysis";
 
     parentPort.postMessage({
       success: true,
       imageUrl: uploadResult.secure_url,
-      result: resultString,
-      diagnosisLabel: labelData.label,
-      confidenceScore: labelData.confidence,
-      recommendation: labelData.recommendation,
+      result: doctorDiagnosis, // Only store the diagnosis name in DB
+      diagnosisLabel: doctorDiagnosis,
+      confidenceScore: null, // AI confidence is removed as per business logic
+      recommendation: "Review the improvement percentage to adjust the treatment plan accordingly.",
       severity: getSeverityLabel(inferenceResult.severityScore),
       severityScore: inferenceResult.severityScore,
       previousScore: inferenceResult.previousScore,
