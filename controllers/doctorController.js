@@ -136,11 +136,13 @@ exports.getPatientDetails = async (req, res, next) => {
     let improvementStr = "+0%";
 
     if (latestAnalysis && latestAnalysis.improvement) {
-      improvementStr = latestAnalysis.improvement;
-      const match = latestAnalysis.improvement.match(/([+-]?\d+(\.\d+)?)/);
+      const rawImprovement = latestAnalysis.improvement;
+      const match = rawImprovement.match(/([+-]?\d+(\.\d+)?)/);
       if (match) {
         // Explicitly set recovery rate to match the exact improvement percentage
         parsedRecovery = Math.max(0, Math.min(100, Math.round(parseFloat(match[1]))));
+        // Format improvement string as just "+65.0%"
+        improvementStr = (parseFloat(match[1]) >= 0 ? "+" : "") + match[1] + "%";
       }
     }
 
@@ -158,6 +160,8 @@ exports.getPatientDetails = async (req, res, next) => {
       // Clinical fields
       status: patientClinical ? patientClinical.status : (user.isCritical ? "Critical" : "Stable"),
       recoveryProgress: parsedRecovery,
+      recoveryRate: parsedRecovery,
+      recovery: parsedRecovery,
       improvement: improvementStr,
       medicalHistory: patientClinical ? patientClinical.medicalHistory : "",
       nextAppointment: patientClinical ? patientClinical.nextAppointment : null,
