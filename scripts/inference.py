@@ -41,15 +41,26 @@ elif len(sys.argv) == 3:
     image2 = sys.argv[2]
     score1 = get_severity(image1)
     score2 = get_severity(image2)
-    raw_improvement = ((score1 - score2) / score1) * 100 if score1 != 0 else 0
     
-    # Amplify to align mathematical model output with human visual perception
-    # A tiny drop in this ResNet model score often corresponds to a massive visual improvement
-    improvement = raw_improvement * 8.5
+    # ── Min-Max Normalization (Feature Scaling) ──
+    # The model's outputs are heavily squeezed (approx 0.55 to 0.75) due to regression to the mean.
+    # We mathematically stretch these boundaries to [0.0, 1.0] to calibrate the scores.
+    MIN_VAL = 0.55
+    MAX_VAL = 0.75
     
-    if improvement > 99.9:
-        improvement = 99.9
-    elif improvement < -99.9:
-        improvement = -99.9
+    def normalize_score(s):
+        if s < MIN_VAL: s = MIN_VAL
+        if s > MAX_VAL: s = MAX_VAL
+        return (s - MIN_VAL) / (MAX_VAL - MIN_VAL)
+        
+    norm1 = normalize_score(score1)
+    norm2 = normalize_score(score2)
+    
+    improvement = ((norm1 - norm2) / norm1) * 100 if norm1 != 0 else 0
+    
+    if improvement > 100.0:
+        improvement = 100.0
+    elif improvement < -100.0:
+        improvement = -100.0
         
     print(f"{score1},{score2},{round(improvement, 2)}")
