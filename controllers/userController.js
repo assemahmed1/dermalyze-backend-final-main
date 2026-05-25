@@ -33,13 +33,25 @@ exports.getProfile = async (req, res, next) => {
           order: [["createdAt", "DESC"]]
         });
 
+        let parsedRecovery = patientClinical.recoveryProgress || 0;
+        let improvementStr = "+0%";
+
+        if (latestAnalysis && latestAnalysis.improvement) {
+          improvementStr = latestAnalysis.improvement;
+          const match = latestAnalysis.improvement.match(/([+-]?\d+(\.\d+)?)/);
+          if (match) {
+            // Explicitly set recovery rate to match the exact improvement percentage
+            parsedRecovery = Math.max(0, Math.min(100, Math.round(parseFloat(match[1]))));
+          }
+        }
+
         // Add both standard and alternative keys expected by the Flutter app
         profileData.diagnosis = patientClinical.diagnosis || user.diagnosis || "Unknown";
         profileData.currentDiagnosis = profileData.diagnosis;
         profileData.quality = patientClinical.status || "Low";
         profileData.recoveryQuality = profileData.quality;
-        profileData.recoveryProgress = patientClinical.recoveryProgress || 0;
-        profileData.improvement = (latestAnalysis && latestAnalysis.improvement) ? latestAnalysis.improvement : "+0%";
+        profileData.recoveryProgress = parsedRecovery;
+        profileData.improvement = improvementStr;
         profileData.lastVisit = patientClinical.lastVisit || "";
         profileData.lastCheckup = profileData.lastVisit;
         profileData.nextVisit = patientClinical.nextAppointment || "";

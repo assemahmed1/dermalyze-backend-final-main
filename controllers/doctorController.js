@@ -126,6 +126,24 @@ exports.getPatientDetails = async (req, res, next) => {
       ? await Medication.findAll({ where: { patientId: patientClinical.id }, order: [["createdAt", "DESC"]] })
       : [];
 
+    // Fetch the latest analysis to parse improvement
+    const Analysis = require("../models/Analysis");
+    const latestAnalysis = patientClinical 
+      ? await Analysis.findOne({ where: { patientId: patientClinical.id }, order: [["createdAt", "DESC"]] })
+      : null;
+
+    let parsedRecovery = patientClinical ? patientClinical.recoveryProgress : 0;
+    let improvementStr = "+0%";
+
+    if (latestAnalysis && latestAnalysis.improvement) {
+      improvementStr = latestAnalysis.improvement;
+      const match = latestAnalysis.improvement.match(/([+-]?\d+(\.\d+)?)/);
+      if (match) {
+        // Explicitly set recovery rate to match the exact improvement percentage
+        parsedRecovery = Math.max(0, Math.min(100, Math.round(parseFloat(match[1]))));
+      }
+    }
+
     // 3. Assemble detailed patient object
     const detailedPatient = {
       id: user.id.toString(),
@@ -139,7 +157,8 @@ exports.getPatientDetails = async (req, res, next) => {
       nationalId: user.nationalId || "",
       // Clinical fields
       status: patientClinical ? patientClinical.status : (user.isCritical ? "Critical" : "Stable"),
-      recoveryProgress: patientClinical ? patientClinical.recoveryProgress : 0,
+      recoveryProgress: parsedRecovery,
+      improvement: improvementStr,
       medicalHistory: patientClinical ? patientClinical.medicalHistory : "",
       nextAppointment: patientClinical ? patientClinical.nextAppointment : null,
       lastVisit: patientClinical ? patientClinical.lastVisit : null,
