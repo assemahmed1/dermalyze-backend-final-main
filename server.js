@@ -33,6 +33,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const socketHandler = require("./services/socketHandler");
 const helmet = require("helmet");
+const crypto = require("crypto");
 
 const app = express();
 
@@ -61,6 +62,32 @@ socketHandler(io);
 app.use(helmet());
 app.use(cookieParser());
 app.use(morgan("dev"));
+
+// ── X-Request-ID — add unique ID to every request for tracing ────────────────
+app.use((req, res, next) => {
+  const requestId = req.headers["x-request-id"] || crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader("X-Request-ID", requestId);
+  next();
+});
+
+// ── Request Timeout — 30s default, 120s for analysis routes ──────────────────
+app.use((req, res, next) => {
+  const isAnalysisRoute = req.path.includes("/analysis/");
+  const timeoutMs = isAnalysisRoute ? 120000 : 30000;
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({
+        success: false,
+        message: "Request timed out. Please try again.",
+        requestId: req.requestId,
+      });
+    }
+  }, timeoutMs);
+  res.on("finish", () => clearTimeout(timeout));
+  res.on("close", () => clearTimeout(timeout));
+  next();
+});
 app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [

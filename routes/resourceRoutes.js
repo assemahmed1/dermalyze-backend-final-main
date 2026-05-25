@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const resourceController = require("../controllers/resourceController");
-const cacheMiddleware = require("../middlewares/cacheMiddleware");
+const { cache } = require("../middlewares/cacheMiddleware");
 
 /**
  * @swagger
@@ -44,6 +44,6 @@ const cacheMiddleware = require("../middlewares/cacheMiddleware");
  *       200:
  *         description: Array of disease resource objects
  */
-router.get("/diseases", cacheMiddleware(3600), resourceController.getDiseases);
+router.get("/diseases", cache("resources_diseases", 86400), resourceController.getDiseases);
 
 module.exports = router;

@@ -1,100 +1,85 @@
-// cacheMiddleware.js — Upstash REST & In-Memory Fallback Cache Middleware
 const { Redis } = require("@upstash/redis");
 
-let redisClient = null;
-let isRedisConfigured = false;
-
-// In-memory fallback cache Map with bounded size (LRU eviction)
-const memoryCache = new Map();
-const MAX_MEMORY_CACHE_SIZE = 500;
-
-const restUrl = process.env.UPSTASH_REDIS_REST_URL;
-const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-if (restUrl && restToken) {
-  try {
-    redisClient = new Redis({
-      url: restUrl,
-      token: restToken,
+// Initialize Redis client from environment variables
+let redis = null;
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
-    isRedisConfigured = true;
-    console.log("✅ Upstash Redis client initialized.");
-  } catch (err) {
-    console.error("❌ Failed to initialize Upstash Redis:", err.message);
+    console.log("✅ Redis cache connected (Upstash)");
+  } else {
+    console.warn("⚠️  Redis env vars not set — caching disabled");
   }
-} else {
-  console.log("⚠️ Upstash Redis credentials not configured. Using high-performance in-memory cache.");
+} catch (err) {
+  console.error("❌ Redis connection failed:", err.message);
 }
 
-const cacheMiddleware = (ttlSeconds = 3600) => {
+/**
+ * Creates a caching middleware for GET endpoints.
+ *
+ * @param {string} prefix   - Cache key prefix (e.g. "medicines")
+ * @param {number} ttlSecs  - Time-to-live in seconds (default 3600 = 1 hour)
+ * @returns Express middleware
+ *
+ * Usage:
+ *   router.get("/all", cache("medicines_all", 3600), controller.getAll);
+ */
+function cache(prefix, ttlSecs = 3600) {
   return async (req, res, next) => {
-    // Only cache GET requests
-    if (req.method !== "GET") return next();
+    // Skip caching if Redis is unavailable
+    if (!redis) return next();
 
-    // Construct request specific cache key
-    const cacheKey = `cache:${req.originalUrl || req.url}`;
+    // Build a unique cache key from prefix + query string
+    const queryStr = JSON.stringify(req.query || {});
+    const cacheKey = `dermalyze:${prefix}:${Buffer.from(queryStr).toString("base64")}`;
 
     try {
-      if (isRedisConfigured && redisClient) {
-        try {
-          const cachedValue = await redisClient.get(cacheKey);
-          if (cachedValue) {
-            console.log(`⚡ Cache HIT (Upstash Redis): ${cacheKey}`);
-            const data = typeof cachedValue === "string" ? JSON.parse(cachedValue) : cachedValue;
-            return res.json(data);
-          }
-        } catch (redisError) {
-          console.warn("⚠️ Upstash Redis GET failed, falling back to in-memory:", redisError.message);
-        }
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        res.setHeader("X-Cache", "HIT");
+        return res.json(cached);
       }
-
-      // Fallback: In-memory cache
-      const cachedItem = memoryCache.get(cacheKey);
-      if (cachedItem && cachedItem.expiry > Date.now()) {
-        console.log(`⚡ Cache HIT (In-Memory Fallback): ${cacheKey}`);
-        return res.json(cachedItem.value);
-      } else if (cachedItem) {
-        memoryCache.delete(cacheKey);
-      }
-
-      // Intercept and wrap response payload
-      const originalJson = res.json;
-      res.json = function (data) {
-        res.json = originalJson;
-
-        if (res.statusCode === 200) {
-          if (isRedisConfigured && redisClient) {
-            redisClient.set(cacheKey, JSON.stringify(data), {
-              ex: ttlSeconds,
-            }).catch((err) => {
-              console.warn("⚠️ Upstash Redis SET failed, saving to in-memory fallback:", err.message);
-              memoryCache.set(cacheKey, {
-                value: data,
-                expiry: Date.now() + ttlSeconds * 1000,
-              });
-            });
-          } else {
-            // Evict oldest entry if cache is at max capacity
-            if (memoryCache.size >= MAX_MEMORY_CACHE_SIZE) {
-              const firstKey = memoryCache.keys().next().value;
-              memoryCache.delete(firstKey);
-            }
-            memoryCache.set(cacheKey, {
-              value: data,
-              expiry: Date.now() + ttlSeconds * 1000,
-            });
-          }
-        }
-
-        return originalJson.call(this, data);
-      };
-
-      next();
-    } catch (error) {
-      console.warn("Cache middleware bypass:", error.message);
-      next();
+    } catch (err) {
+      // Redis read failure — fall through to DB (never block the request)
+      console.error("[CACHE READ ERROR]", err.message);
     }
-  };
-};
 
-module.exports = cacheMiddleware;
+    // Intercept res.json to cache the response before sending
+    const originalJson = res.json.bind(res);
+    res.json = async (data) => {
+      res.setHeader("X-Cache", "MISS");
+      try {
+        await redis.set(cacheKey, data, { ex: ttlSecs });
+      } catch (err) {
+        console.error("[CACHE WRITE ERROR]", err.message);
+      }
+      return originalJson(data);
+    };
+
+    next();
+  };
+}
+
+/**
+ * Invalidate all cache keys matching a given prefix.
+ * Call this when data changes (e.g. new medicine added).
+ *
+ * @param {string} prefix  - e.g. "medicines_all"
+ */
+async function invalidateCache(prefix) {
+  if (!redis) return;
+  try {
+    const pattern = `dermalyze:${prefix}:*`;
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      console.log(`🗑️  Cache invalidated: ${keys.length} keys (prefix: ${prefix})`);
+    }
+  } catch (err) {
+    console.error("[CACHE INVALIDATE ERROR]", err.message);
+  }
+}
+
+module.exports = { cache, invalidateCache };

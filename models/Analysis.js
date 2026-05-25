@@ -27,6 +27,21 @@ const Analysis = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    diagnosisLabel: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Human-readable diagnosis label from local AI model"
+    },
+    confidenceScore: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      comment: "AI confidence score (0.0–1.0)"
+    },
+    recommendation: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "AI-generated treatment recommendation"
+    },
     stage: {
       type: DataTypes.STRING,
       allowNull: true,

@@ -58,8 +58,8 @@ router.post("/patients/:patientId/medications", auth, requireRole("doctor"), req
  *         schema:
  *           type: string
  */
-router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patient"), requireVerifiedDoctor, getPatientMedications);
-router.get("/patients/:patientId/medications", auth, requireRole("doctor", "patient"), requireVerifiedDoctor, getPatientMedications);
+router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patient"), getPatientMedications);
+router.get("/patients/:patientId/medications", auth, requireRole("doctor", "patient"), getPatientMedications);
 
 /**
  * @swagger

@@ -4,7 +4,7 @@ const { Op } = require("sequelize");
 const ClinicalMedication = require("../models/ClinicalMedication");
 const auth = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
-const cacheMiddleware = require("../middlewares/cacheMiddleware");
+const { cache } = require("../middlewares/cacheMiddleware");
 
 // Helper to map DB record to the expected output format
 const mapMedication = (med) => {
@@ -35,7 +35,7 @@ const mapMedication = (med) => {
  *         schema:
  *           type: string
  */
-router.get("/medicines/search", async (req, res) => {
+router.get("/medicines/search", cache("medicines_search", 300), async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.trim().length < 2) {
@@ -76,7 +76,7 @@ router.get("/medicines/search", async (req, res) => {
  *         schema:
  *           type: string
  */
-router.get("/medicines/match", async (req, res) => {
+router.get("/medicines/match", cache("medicines_match", 300), async (req, res) => {
   try {
     const qVal = req.query.q || req.query.name;
     if (!qVal) {
@@ -109,7 +109,7 @@ router.get("/medicines/match", async (req, res) => {
  *     summary: Get all medicines from the guide
  *     tags: [Medicines]
  */
-router.get("/medicines/all", cacheMiddleware(3600), async (req, res) => {
+router.get("/medicines/all", cache("medicines_all", 3600), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
