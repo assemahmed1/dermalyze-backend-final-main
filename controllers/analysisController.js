@@ -38,12 +38,8 @@ exports.createAnalysis = async (req, res) => {
       status: "processing"
     });
 
-    // 2. Return HTTP response immediately without blocking
-    res.status(201).json({
-      success: true,
-      message: "Analysis started in background",
-      analysis
-    });
+    // Note: We no longer return 201 immediately because the Flutter app 
+    // expects the final analysis result synchronously.
 
     // 3. Spawn background worker to perform Cloudinary upload and Hugging Face analysis
     const worker = new Worker(path.join(__dirname, "../services/analysisWorker.js"), {
@@ -63,6 +59,32 @@ exports.createAnalysis = async (req, res) => {
           analysis.improvement = message.improvement;
           analysis.status = "completed";
           await analysis.save();
+
+          // Extract diagnosis and confidence
+          let diag = analysis.result;
+          let conf = 0.95;
+          const match = analysis.result.match(/(.*) \(([\d.]+)% confidence\)/);
+          if (match) {
+            diag = match[1];
+            conf = parseFloat(match[2]) / 100;
+          }
+
+          // Return synchronous response matching Flutter app expectations
+          res.status(200).json({
+            success: true,
+            patientId: analysis.patientId.toString(),
+            patientName: patient.name,
+            diagnosis: diag,
+            confidence: conf,
+            severity: analysis.severity,
+            improvement: analysis.improvement,
+            recommendation: "Continue current treatment plan",
+            affectedArea: "N/A",
+            currentArea: "N/A",
+            date: analysis.createdAt,
+            previousSeverity: previousAnalyses.length > 0 ? previousAnalyses[0].severity || "N/A" : "N/A",
+            analysis: analysis // keep original structure just in case
+          });
 
           // Emit real-time Socket.io event to Doctor and Patient rooms
           const { getIO } = require("../services/socketHandler");
@@ -100,9 +122,16 @@ exports.createAnalysis = async (req, res) => {
               error: message.error
             });
           }
+
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: "Analysis failed", error: message.error });
+          }
         }
       } catch (err) {
         console.error("[MASTER PROCESS WORKER MESSAGE ERROR]", err);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: "Server error during analysis", error: err.message });
+        }
       }
     });
 
@@ -112,8 +141,14 @@ exports.createAnalysis = async (req, res) => {
         analysis.result = `Analysis thread crash: ${err.message}`;
         analysis.status = "failed";
         await analysis.save();
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: "Analysis thread crashed", error: err.message });
+        }
       } catch (dbErr) {
         console.error("Error updating failed state after thread crash:", dbErr);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: "Server error", error: dbErr.message });
+        }
       }
     });
 
