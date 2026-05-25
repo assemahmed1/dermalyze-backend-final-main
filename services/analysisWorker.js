@@ -190,7 +190,7 @@ async function run() {
     const labelData = mapSeverityToLabel(inferenceResult.severityScore);
 
     // Build final result string (kept for backward compat with `analysis.result` column)
-    const resultString = `${labelData.label} (${(labelData.confidence * 100).toFixed(1)}% confidence)`;
+    const resultString = labelData.label;
 
     parentPort.postMessage({
       success: true,
