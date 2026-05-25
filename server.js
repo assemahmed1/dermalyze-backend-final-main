@@ -166,7 +166,8 @@ app.use("/api/auth/register", registerLimiter);
 // ── Database Init ─────────────────────────────────────────────────────────────
 (async () => {
   await connectDB();
-  await sequelize.sync();
+  await sequelize.sync({ alter: true });
+
   console.log("✅ MySQL tables synced successfully.");
 
   const User = require("./models/User");
