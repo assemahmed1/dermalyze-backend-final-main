@@ -43,6 +43,7 @@ const {
  *                 type: string
  */
 router.post("/patient/:patientId/medications", auth, requireRole("doctor"), requireVerifiedDoctor, addMedication);
+router.post("/patients/:patientId/medications", auth, requireRole("doctor"), requireVerifiedDoctor, addMedication);
 
 /**
  * @swagger
@@ -58,6 +59,7 @@ router.post("/patient/:patientId/medications", auth, requireRole("doctor"), requ
  *           type: string
  */
 router.get("/patient/:patientId/medications", auth, requireRole("doctor", "patient"), requireVerifiedDoctor, getPatientMedications);
+router.get("/patients/:patientId/medications", auth, requireRole("doctor", "patient"), requireVerifiedDoctor, getPatientMedications);
 
 /**
  * @swagger

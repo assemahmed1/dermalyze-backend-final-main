@@ -80,7 +80,7 @@ router.get("/patients", protect, requireRole("doctor"), getPatients);
  *       200:
  *         description: Patient data
  */
-router.get("/patients/:id", protect, requireRole("doctor"), validateObjectId("id"), getPatientById);
+router.get("/patients/:id", protect, requireRole("doctor", "patient"), validateObjectId("id"), getPatientById);
 
 /**
  * @swagger

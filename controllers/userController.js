@@ -45,9 +45,18 @@ exports.getProfile = async (req, res, next) => {
 // @route   PUT /api/user/notification-preferences
 exports.updateNotificationPreferences = async (req, res, next) => {
   try {
-    const { pushNotifications, emailNotifications, smsNotifications } = req.body;
+    const { pushNotifications, emailNotifications, smsNotifications, emailEnabled, pushEnabled } = req.body;
+    
+    // Support both Backend and Flutter app keys
+    const finalPush = pushEnabled !== undefined ? pushEnabled : pushNotifications;
+    const finalEmail = emailEnabled !== undefined ? emailEnabled : emailNotifications;
+
     await User.update(
-      { pushNotifications, emailNotifications, smsNotifications },
+      { 
+        pushNotifications: finalPush, 
+        emailNotifications: finalEmail, 
+        smsNotifications 
+      },
       { where: { id: req.user.id } }
     );
     const user = await User.findByPk(req.user.id);
