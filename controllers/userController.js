@@ -73,6 +73,33 @@ exports.getProfile = async (req, res, next) => {
   }
 };
 
+// @desc    Update current user profile
+// @route   PUT /api/user/profile
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, nationalId, dateOfBirth, allergies } = req.body;
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.name = name || user.name;
+    user.phone = phone !== undefined ? phone : user.phone;
+    user.nationalId = nationalId !== undefined ? nationalId : user.nationalId;
+    user.dateOfBirth = dateOfBirth !== undefined ? dateOfBirth : user.dateOfBirth;
+    user.allergies = allergies !== undefined ? allergies : user.allergies;
+    
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      profile: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update notification preferences
 // @route   PUT /api/user/notification-preferences
 exports.updateNotificationPreferences = async (req, res, next) => {

@@ -49,6 +49,15 @@ router.get("/profile", userController.getProfile);
 
 /**
  * @swagger
+ * /user/profile:
+ *   put:
+ *     summary: Update current user profile
+ *     tags: [User]
+ */
+router.put("/profile", userController.updateProfile);
+
+/**
+ * @swagger
  * /user/notification-preferences:
  *   put:
  *     summary: Update notification preferences
