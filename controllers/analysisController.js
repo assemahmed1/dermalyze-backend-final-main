@@ -87,6 +87,25 @@ exports.createAnalysis = async (req, res) => {
           analysis.status = "completed";
           await analysis.save();
 
+          // Calculate and update the patient's overall recovery progress based on the AI severity score
+          if (message.severityScore !== undefined && message.severityScore !== null) {
+            const overallRecovery = Math.round((1.0 - message.severityScore) * 100);
+            patient.recoveryProgress = Math.min(Math.max(overallRecovery, 0), 100);
+            await patient.save();
+
+            // Emit profile update to the patient so their dashboard updates instantly
+            try {
+              const { getIO } = require("../services/socketHandler");
+              const io = getIO();
+              if (io && patient.userId) {
+                io.to(String(patient.userId)).emit("profile_updated", {
+                  recoveryProgress: patient.recoveryProgress,
+                  message: "Your recovery progress has been updated based on the latest AI analysis."
+                });
+              }
+            } catch (_) {}
+          }
+
           // Emit real-time Socket.io event to Doctor and Patient rooms
           try {
             const { getIO } = require("../services/socketHandler");

@@ -131,6 +131,26 @@ const updateRecoveryProgress = async (req, res, next) => {
     patient.recoveryProgress = progress;
     await patient.save();
 
+    // Emit real-time Socket.io events so both Doctor and Patient UI update instantly
+    try {
+      const { getIO } = require("../services/socketHandler");
+      const io = getIO();
+      if (io) {
+        // Notify doctor's UI
+        io.to(String(req.user.id)).emit("patient_updated", {
+          patientId: patient.userId || patient.id,
+          recoveryProgress: progress
+        });
+        // Notify patient's UI
+        if (patient.userId) {
+          io.to(String(patient.userId)).emit("profile_updated", {
+            recoveryProgress: progress,
+            message: `Your doctor has updated your recovery progress to ${progress}%.`
+          });
+        }
+      }
+    } catch (_) {}
+
     res.json({ message: "Recovery progress updated", patient });
   } catch (error) {
     next(error);
