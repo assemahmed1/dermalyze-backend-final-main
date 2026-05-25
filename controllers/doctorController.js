@@ -353,11 +353,18 @@ exports.createAppointment = async (req, res, next) => {
     // 1. Emit Socket.io Event for live update
     const { getIO } = require("../services/socketHandler");
     const io = getIO();
-    if (io && patientUser) {
-      io.to(String(patientUser.id)).emit("profile_updated", {
+    if (io) {
+      if (patientUser) {
+        io.to(String(patientUser.id)).emit("profile_updated", {
+          nextAppointment: patient.nextAppointment,
+          lastVisit: patient.lastVisit,
+          message: "A new follow-up appointment was scheduled."
+        });
+      }
+      io.to(String(req.user.id)).emit("patient_updated", {
+        patientId: patientUser ? patientUser.id : patientId,
         nextAppointment: patient.nextAppointment,
-        lastVisit: patient.lastVisit,
-        message: "A new follow-up appointment was scheduled."
+        lastVisit: patient.lastVisit
       });
     }
 
@@ -372,11 +379,25 @@ exports.createAppointment = async (req, res, next) => {
     }
     // ---------------------------------------------------------
 
+    // Build a detailed patient object so the frontend can properly merge it by User ID
+    const detailedPatient = {
+      id: patientUser ? patientUser.id.toString() : patientId.toString(),
+      name: patientUser ? patientUser.name : patient.name,
+      email: patientUser ? patientUser.email : "",
+      phone: patientUser ? patientUser.phone : patient.phone,
+      diagnosis: patientUser ? patientUser.diagnosis : patient.diagnosis,
+      isCritical: patientUser ? patientUser.isCritical : false,
+      status: patient.status,
+      recoveryProgress: patient.recoveryProgress,
+      nextAppointment: patient.nextAppointment,
+      lastVisit: patient.lastVisit
+    };
+
     // 5. Return success
     return res.status(201).json({
       message: "Follow-up appointment scheduled successfully.",
       appointment: appointment,
-      patient: patient
+      patient: detailedPatient
     });
   } catch (error) {
     console.error("Error scheduling appointment:", error);

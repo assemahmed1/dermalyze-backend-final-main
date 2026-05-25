@@ -73,6 +73,56 @@ router.get("/patients/me/analysis", protect, requireRole("patient"), async (req,
   }
 });
 
+// GET /api/standard/analyses (Alias)
+router.get("/standard/analyses", protect, requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await getOrCreatePatient(req.user.id);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
+    const analyses = await Analysis.findAll({
+      where: { patientId: patient.id },
+      order: [["createdAt", "DESC"]]
+    });
+    res.json({ success: true, data: analyses });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/patients/me/appointments
+router.get("/patients/me/appointments", protect, requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await getOrCreatePatient(req.user.id);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
+    const Appointment = require("../models/Appointment");
+    const appointments = await Appointment.findAll({
+      where: { patientId: patient.id },
+      order: [["appointmentDate", "DESC"], ["appointmentTime", "DESC"]]
+    });
+    res.json({ success: true, data: appointments });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/standard/appointments (Alias)
+router.get("/standard/appointments", protect, requireRole("patient"), async (req, res, next) => {
+  try {
+    const patient = await getOrCreatePatient(req.user.id);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
+    const Appointment = require("../models/Appointment");
+    const appointments = await Appointment.findAll({
+      where: { patientId: patient.id },
+      order: [["appointmentDate", "DESC"], ["appointmentTime", "DESC"]]
+    });
+    res.json({ success: true, data: appointments });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ----------------------------------------------------
 // DOCTOR'S ROUTES (Acting on a Patient)
 // ----------------------------------------------------
