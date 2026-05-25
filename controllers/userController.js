@@ -27,15 +27,35 @@ exports.getProfile = async (req, res, next) => {
     if (user.role === "patient") {
       const patientClinical = await Patient.findOne({ where: { userId: user.id } });
       if (patientClinical) {
-        profileData.nextAppointment = patientClinical.nextAppointment;
-        profileData.lastVisit = patientClinical.lastVisit;
-        profileData.recoveryProgress = patientClinical.recoveryProgress;
+        // Fetch the latest analysis to get the "improvement" string if available
+        const latestAnalysis = await Analysis.findOne({
+          where: { patientId: patientClinical.id },
+          order: [["createdAt", "DESC"]]
+        });
+
+        // Add both standard and alternative keys expected by the Flutter app
+        profileData.diagnosis = patientClinical.diagnosis || user.diagnosis || "Unknown";
+        profileData.currentDiagnosis = profileData.diagnosis;
+        profileData.quality = patientClinical.status || "Low";
+        profileData.recoveryQuality = profileData.quality;
+        profileData.recoveryProgress = patientClinical.recoveryProgress || 0;
+        profileData.improvement = (latestAnalysis && latestAnalysis.improvement) ? latestAnalysis.improvement : "+0%";
+        profileData.lastVisit = patientClinical.lastVisit || "";
+        profileData.lastCheckup = profileData.lastVisit;
+        profileData.nextVisit = patientClinical.nextAppointment || "";
+        profileData.nextAppointment = profileData.nextVisit;
         profileData.status = patientClinical.status;
       }
     }
 
-    // The Flutter app specifically expects the key to be "profile"
-    res.json({ profile: profileData });
+    // The Flutter app expects specific keys, provide multiple wrappers to prevent parsing crashes
+    res.json({ 
+      success: true,
+      profile: profileData,
+      patient: profileData,
+      user: profileData,
+      data: profileData
+    });
   } catch (error) {
     next(error);
   }

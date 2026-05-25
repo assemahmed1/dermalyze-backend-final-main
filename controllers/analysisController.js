@@ -122,6 +122,7 @@ exports.createAnalysis = async (req, res) => {
               if (io && patient.userId) {
                 io.to(String(patient.userId)).emit("profile_updated", {
                   recoveryProgress: patient.recoveryProgress,
+                  improvement: message.improvement || "+0%",
                   message: "Your recovery progress has been updated based on the latest AI analysis."
                 });
               }

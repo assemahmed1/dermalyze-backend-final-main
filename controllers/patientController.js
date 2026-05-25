@@ -139,12 +139,14 @@ const updateRecoveryProgress = async (req, res, next) => {
         // Notify doctor's UI
         io.to(String(req.user.id)).emit("patient_updated", {
           patientId: patient.userId || patient.id,
-          recoveryProgress: progress
+          recoveryProgress: progress,
+          improvement: "+0%" // Manual update safe fallback
         });
         // Notify patient's UI
         if (patient.userId) {
           io.to(String(patient.userId)).emit("profile_updated", {
             recoveryProgress: progress,
+            improvement: "+0%",
             message: `Your doctor has updated your recovery progress to ${progress}%.`
           });
         }
