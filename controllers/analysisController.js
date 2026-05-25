@@ -87,11 +87,33 @@ exports.createAnalysis = async (req, res) => {
           analysis.status = "completed";
           await analysis.save();
 
-          // Calculate and update the patient's overall recovery progress based on the AI severity score
-          if (message.severityScore !== undefined && message.severityScore !== null) {
+          // Calculate and update the patient's overall recovery progress based on the AI improvement percentage
+          let parsedImprovement = 0;
+          if (message.improvement) {
+            // Extract the number from strings like "+65.0% improvement" or "-10.5% deterioration"
+            const match = message.improvement.match(/([+-]?\d+(\.\d+)?)/);
+            if (match) {
+              parsedImprovement = parseFloat(match[1]);
+            }
+          }
+
+          let updatedRecovery = false;
+          if (parsedImprovement !== 0) {
+            // Follow-up scans: Add or subtract the improvement delta from the current recovery progress
+            const currentRecovery = patient.recoveryProgress || 0;
+            const newRecovery = Math.round(currentRecovery + parsedImprovement);
+            patient.recoveryProgress = Math.min(Math.max(newRecovery, 0), 100);
+            await patient.save();
+            updatedRecovery = true;
+          } else if (message.severityScore !== undefined && message.severityScore !== null && isFirstScan) {
+            // First scan: Base initial recovery strictly on severity (1.0 severity = 0% recovery)
             const overallRecovery = Math.round((1.0 - message.severityScore) * 100);
             patient.recoveryProgress = Math.min(Math.max(overallRecovery, 0), 100);
             await patient.save();
+            updatedRecovery = true;
+          }
+
+          if (updatedRecovery) {
 
             // Emit profile update to the patient so their dashboard updates instantly
             try {
