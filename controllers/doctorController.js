@@ -324,6 +324,10 @@ exports.createAppointment = async (req, res, next) => {
       return res.status(400).json({ message: "Appointment date and time are required." });
     }
 
+    if (appointmentDate === 'Invalid date' || isNaN(Date.parse(appointmentDate))) {
+      return res.status(400).json({ message: "The provided appointment date is invalid. Please check the date format in the app." });
+    }
+
     // 2. Verify patient belongs to doctor
     const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) {
