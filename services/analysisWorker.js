@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const https = require("https");
-const { spawn } = require("child_process");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Configure Cloudinary inside the worker
 cloudinary.config({
@@ -30,9 +30,6 @@ function uploadToCloudinary(buffer) {
   });
 }
 
-// The AI model is strictly for measuring severity and improvement.
-// The diagnosis label is provided by the doctor in the patient's medical record.
-
 // ── Severity Label (Low / Medium / High) ─────────────────────────────────────
 function getSeverityLabel(score) {
   if (score < 0.33) return "Low";
@@ -40,7 +37,7 @@ function getSeverityLabel(score) {
   return "High";
 }
 
-// ── Download Previous Image ──────────────────────────────────────────────────
+// ── Download Previous Image from URL ─────────────────────────────────────────
 function downloadImage(url, dest) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
@@ -57,57 +54,203 @@ function downloadImage(url, dest) {
   });
 }
 
-// ── Python Inference (PyTorch ResNet-18 severity_model.pt) ──────────────────
-function runPythonInference(currPath, prevPath) {
-  return new Promise((resolve, reject) => {
-    const args = [path.join(__dirname, "../scripts/inference.py")];
-    if (prevPath) args.push(prevPath);
-    args.push(currPath);
+// ── Helper: Read image as base64 ─────────────────────────────────────────────
+function imageToBase64(filePath) {
+  const buffer = fs.readFileSync(filePath);
+  return buffer.toString("base64");
+}
 
-    const py = spawn("python3", args);
-    let stdout = "";
-    let stderr = "";
+// ── PRIMARY: Gemini 1.5 Flash Analysis ───────────────────────────────────────
+async function runGeminiAnalysis(currPath, prevPath, patientDiagnosis) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
-    // Timeout: kill Python process after 45 seconds if still running
-    const timeout = setTimeout(() => {
-      py.kill("SIGTERM");
-      reject(new Error("Python inference timed out after 45 seconds"));
-    }, 45000);
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    py.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-    py.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
+  const currBase64 = imageToBase64(currPath);
+  const currPart = { inlineData: { data: currBase64, mimeType: "image/jpeg" } };
 
-    py.on("close", (code) => {
-      clearTimeout(timeout);
-      if (code !== 0) return reject(new Error(stderr || "Python process exited with code " + code));
+  let prompt;
+  let parts;
 
-      const parts = stdout.trim().split(",");
-      if (parts.length === 1) {
-        resolve({ severityScore: parseFloat(parts[0]), improvementStr: null, previousScore: null });
-      } else if (parts.length === 3) {
-        const improvement = parseFloat(parts[2]);
-        let improvementStr = "No change";
-        if (improvement > 0) improvementStr = `+${improvement.toFixed(1)}% improvement`;
-        else if (improvement < 0) improvementStr = `${improvement.toFixed(1)}% deterioration`;
-        resolve({
-          severityScore: parseFloat(parts[1]),
-          previousScore: parseFloat(parts[0]),
-          improvementStr,
-        });
+  if (prevPath) {
+    // ── Follow-up scan: compare two images ───────────────────────────────────
+    const prevBase64 = imageToBase64(prevPath);
+    const prevPart = { inlineData: { data: prevBase64, mimeType: "image/jpeg" } };
+
+    prompt = `You are a medical AI assistant specializing in dermatology. 
+The patient has been diagnosed by their doctor with: "${patientDiagnosis}".
+
+You are given TWO skin images:
+- Image 1 (PREVIOUS): The earlier photo of the skin condition.
+- Image 2 (CURRENT): The more recent photo taken during a follow-up visit.
+
+Your ONLY task is to measure the visual improvement or deterioration of the skin between the two images.
+Do NOT re-diagnose the patient. Do NOT suggest any new conditions.
+
+Analyze:
+1. Changes in redness, inflammation, or irritation.
+2. Changes in the number or size of lesions.
+3. Changes in skin texture and overall appearance.
+
+Respond ONLY in this exact JSON format (no markdown, no extra text):
+{
+  "improvementPercent": <number between -100 and 100, positive = improvement, negative = deterioration>,
+  "severityScore": <number between 0.0 and 1.0 for the CURRENT image, where 0=clear, 1=severe>,
+  "severity": "<Low|Medium|High>",
+  "summary": "<one sentence describing the change>"
+}`;
+
+    parts = [
+      { text: "Image 1 (PREVIOUS):" },
+      prevPart,
+      { text: "Image 2 (CURRENT):" },
+      currPart,
+      { text: prompt },
+    ];
+  } else {
+    // ── First scan: analyze single image ─────────────────────────────────────
+    prompt = `You are a medical AI assistant specializing in dermatology.
+The patient has been diagnosed by their doctor with: "${patientDiagnosis}".
+
+This is the FIRST scan of the patient's skin. There is no previous image to compare against.
+
+Your ONLY task is to assess the current severity of the skin condition visible in this image.
+Do NOT re-diagnose the patient. Do NOT suggest any new conditions.
+
+Analyze the current severity based on: redness, inflammation, number and size of lesions, and overall skin texture.
+
+Respond ONLY in this exact JSON format (no markdown, no extra text):
+{
+  "improvementPercent": null,
+  "severityScore": <number between 0.0 and 1.0, where 0=clear, 1=severe>,
+  "severity": "<Low|Medium|High>",
+  "summary": "<one sentence describing the current condition>"
+}`;
+
+    parts = [currPart, { text: prompt }];
+  }
+
+  // Set a 30-second timeout using AbortController
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    const result = await model.generateContent({ contents: [{ role: "user", parts }] });
+    clearTimeout(timeout);
+
+    const text = result.response.text().trim();
+
+    // Strip any accidental markdown code fences
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    const improvementPercent = parsed.improvementPercent;
+    let improvementStr = null;
+    if (improvementPercent !== null && improvementPercent !== undefined) {
+      if (improvementPercent > 0) {
+        improvementStr = `+${improvementPercent.toFixed(1)}% improvement`;
+      } else if (improvementPercent < 0) {
+        improvementStr = `${improvementPercent.toFixed(1)}% deterioration`;
       } else {
-        reject(new Error("Unexpected python output: " + stdout));
+        improvementStr = "No change";
       }
-    });
+    }
 
-    py.on("error", (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+    return {
+      severityScore: parsed.severityScore ?? 0.5,
+      severity: parsed.severity ?? getSeverityLabel(parsed.severityScore ?? 0.5),
+      improvementStr,
+      summary: parsed.summary ?? "",
+      source: "gemini",
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+// ── FALLBACK: Hugging Face Analysis ──────────────────────────────────────────
+async function runHuggingFaceAnalysis(currPath, prevPath, patientDiagnosis) {
+  const hfToken = process.env.HF_API_TOKEN;
+  if (!hfToken) throw new Error("HF_API_TOKEN is not set");
+
+  const currBuffer = fs.readFileSync(currPath);
+
+  // HuggingFace: use skin lesion classification model as severity proxy
+  const hfResponse = await fetch(
+    "https://api-inference.huggingface.co/models/dima806/skin_types_image_detection",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        "Content-Type": "application/octet-stream",
+      },
+      body: currBuffer,
+      signal: AbortSignal.timeout(30000),
+    }
+  );
+
+  if (!hfResponse.ok) {
+    const errorText = await hfResponse.text();
+    throw new Error(`HuggingFace API error ${hfResponse.status}: ${errorText}`);
+  }
+
+  const hfData = await hfResponse.json();
+
+  // Map HF confidence scores to a severity score (0.0–1.0)
+  let severityScore = 0.5; // default
+  if (Array.isArray(hfData) && hfData.length > 0) {
+    // Take the top label score as a proxy for severity (higher confidence = clearer classification)
+    severityScore = Math.min(Math.max(1 - hfData[0].score, 0.1), 0.9);
+  }
+
+  // If we have a previous image, compute a basic improvement from the two HF calls
+  let improvementStr = null;
+  if (prevPath) {
+    const prevBuffer = fs.readFileSync(prevPath);
+    const prevHfResponse = await fetch(
+      "https://api-inference.huggingface.co/models/dima806/skin_types_image_detection",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${hfToken}`,
+          "Content-Type": "application/octet-stream",
+        },
+        body: prevBuffer,
+        signal: AbortSignal.timeout(30000),
+      }
+    );
+
+    if (prevHfResponse.ok) {
+      const prevData = await prevHfResponse.json();
+      const prevSeverityScore = Array.isArray(prevData) && prevData.length > 0
+        ? Math.min(Math.max(1 - prevData[0].score, 0.1), 0.9)
+        : 0.5;
+
+      // Min-Max normalize both scores to amplify small differences
+      const MIN_VAL = 0.10, MAX_VAL = 0.90;
+      const norm = (s) => (Math.min(Math.max(s, MIN_VAL), MAX_VAL) - MIN_VAL) / (MAX_VAL - MIN_VAL);
+      const norm1 = norm(prevSeverityScore);
+      const norm2 = norm(severityScore);
+
+      const improvement = norm1 !== 0 ? ((norm1 - norm2) / norm1) * 100 : 0;
+      const clamped = Math.min(Math.max(improvement, -100), 100);
+
+      if (clamped > 0) improvementStr = `+${clamped.toFixed(1)}% improvement`;
+      else if (clamped < 0) improvementStr = `${clamped.toFixed(1)}% deterioration`;
+      else improvementStr = "No change";
+    }
+  }
+
+  return {
+    severityScore,
+    severity: getSeverityLabel(severityScore),
+    improvementStr,
+    summary: "",
+    source: "huggingface",
+  };
 }
 
 // ── Main Worker Function ─────────────────────────────────────────────────────
@@ -117,6 +260,7 @@ async function run() {
 
   try {
     const buffer = Buffer.from(workerData.imageBuffer);
+    const patientDiagnosis = workerData.patientDiagnosis || "Skin Condition";
 
     // Save current image to temp file
     currPath = path.join(
@@ -134,27 +278,48 @@ async function run() {
       await downloadImage(workerData.previousImageUrl, prevPath);
     }
 
-    // Run Cloudinary upload and PyTorch inference in parallel
-    const [uploadResult, inferenceResult] = await Promise.all([
-      uploadToCloudinary(buffer),
-      runPythonInference(currPath, prevPath),
-    ]);
+    // Run Cloudinary upload in parallel while we prepare for AI
+    const uploadPromise = uploadToCloudinary(buffer);
 
-    // Use the doctor's predefined diagnosis from the patient record
-    const doctorDiagnosis = workerData.patientDiagnosis || "Skin Condition Analysis";
+    // ── Try Gemini first, fallback to HuggingFace on any error ───────────────
+    let inferenceResult;
+    try {
+      inferenceResult = await runGeminiAnalysis(currPath, prevPath, patientDiagnosis);
+      console.log("[AI] Gemini analysis successful.");
+    } catch (geminiError) {
+      console.error("[AI] Gemini failed, falling back to HuggingFace:", geminiError.message);
+      try {
+        inferenceResult = await runHuggingFaceAnalysis(currPath, prevPath, patientDiagnosis);
+        console.log("[AI] HuggingFace fallback successful.");
+      } catch (hfError) {
+        console.error("[AI] HuggingFace fallback also failed:", hfError.message);
+        // Last resort: return a basic result so the upload is not lost
+        inferenceResult = {
+          severityScore: 0.5,
+          severity: "Medium",
+          improvementStr: null,
+          summary: "",
+          source: "fallback-default",
+        };
+      }
+    }
+
+    const uploadResult = await uploadPromise;
 
     parentPort.postMessage({
       success: true,
       imageUrl: uploadResult.secure_url,
-      result: doctorDiagnosis, // Only store the diagnosis name in DB
-      diagnosisLabel: doctorDiagnosis,
-      confidenceScore: null, // AI confidence is removed as per business logic
-      recommendation: "Review the improvement percentage to adjust the treatment plan accordingly.",
-      severity: getSeverityLabel(inferenceResult.severityScore),
+      result: patientDiagnosis,
+      diagnosisLabel: patientDiagnosis,
+      confidenceScore: null,
+      recommendation: inferenceResult.summary
+        ? inferenceResult.summary
+        : "Review the improvement percentage to adjust the treatment plan accordingly.",
+      severity: inferenceResult.severity,
       severityScore: inferenceResult.severityScore,
-      previousScore: inferenceResult.previousScore,
       improvement: inferenceResult.improvementStr,
       isFirstScan: !workerData.previousImageUrl,
+      aiSource: inferenceResult.source,
     });
   } catch (error) {
     parentPort.postMessage({
@@ -163,12 +328,8 @@ async function run() {
     });
   } finally {
     // Cleanup temporary files
-    try {
-      if (currPath && fs.existsSync(currPath)) fs.unlinkSync(currPath);
-    } catch (_) {}
-    try {
-      if (prevPath && fs.existsSync(prevPath)) fs.unlinkSync(prevPath);
-    } catch (_) {}
+    try { if (currPath && fs.existsSync(currPath)) fs.unlinkSync(currPath); } catch (_) {}
+    try { if (prevPath && fs.existsSync(prevPath)) fs.unlinkSync(prevPath); } catch (_) {}
   }
 }
 
