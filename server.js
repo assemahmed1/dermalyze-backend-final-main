@@ -38,6 +38,9 @@ const socketHandler     = require("./services/socketHandler");
 
 const app = express();
 
+// Trust the first proxy to ensure express-rate-limit gets the correct client IP
+app.set("trust proxy", 1);
+
 // ── HTTP + Socket.io Server ──────────────────────────────────────────────────
 const server = http.createServer(app);
 const io = new Server(server, {
