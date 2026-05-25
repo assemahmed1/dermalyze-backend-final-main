@@ -6,49 +6,39 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 const { connectDB, sequelize } = require("./config/db");
+const crypto = require("crypto");
+const rateLimit = require("express-rate-limit");
+const http = require("http");
+const { Server } = require("socket.io");
+const helmet = require("helmet");
 
 // Import all models + associations (must come before sync)
 require("./models");
 
-const analysisRoutes = require("./routes/analysisRoutes");
-const authRoutes = require("./routes/authRoutes");
-const protectedRoutes = require("./routes/protectedRoutes");
-const doctorRoutes = require("./routes/doctorRoutes");
-const patientRoutes = require("./routes/patientRoutes");
-const medicationRoutes = require("./routes/medicationRoutes");
-const historyRoutes = require("./routes/historyRoutes");
-const verifyRoutes = require("./routes/verifyRoutes");
-const chatRoutes = require("./routes/chatRoutes");
-const userRoutes = require("./routes/userRoutes");
-const resourceRoutes = require("./routes/resourceRoutes");
-const medicinesRouter = require("./routes/medicines");
-const aiRoutes = require("./routes/aiRoutes");
-const adminRoutes = require("./routes/adminRoutes");
-const smartHistoryRoutes = require("./routes/smartHistory");
-const diseaseReportRoutes = require("./routes/diseaseReport.routes");
-const standardRoutes = require("./routes/standardRoutes");
-const errorHandler = require("./middlewares/errorHandler");
-const { loadModels } = require("./services/faceService");
-const http = require("http");
-const { Server } = require("socket.io");
-const socketHandler = require("./services/socketHandler");
-const helmet = require("helmet");
-const crypto = require("crypto");
+// ── Routes ──────────────────────────────────────────────────────────────────
+const analysisRoutes    = require("./routes/analysisRoutes");
+const authRoutes        = require("./routes/authRoutes");
+const protectedRoutes   = require("./routes/protectedRoutes");
+const doctorRoutes      = require("./routes/doctorRoutes");
+const patientRoutes     = require("./routes/patientRoutes");
+const medicationRoutes  = require("./routes/medicationRoutes");
+const historyRoutes     = require("./routes/historyRoutes");
+const verifyRoutes      = require("./routes/verifyRoutes");
+const chatRoutes        = require("./routes/chatRoutes");
+const userRoutes        = require("./routes/userRoutes");
+const resourceRoutes    = require("./routes/resourceRoutes");
+const medicinesRouter   = require("./routes/medicines");
+const aiRoutes          = require("./routes/aiRoutes");
+const adminRoutes       = require("./routes/adminRoutes");
+const smartHistoryRoutes   = require("./routes/smartHistory");
+const diseaseReportRoutes  = require("./routes/diseaseReport.routes");
+const standardRoutes    = require("./routes/standardRoutes");
+const errorHandler      = require("./middlewares/errorHandler");
+const socketHandler     = require("./services/socketHandler");
 
 const app = express();
 
-app.use((req, res, next) => {
-  if (req.query) {
-    Object.defineProperty(req, "query", {
-      value: { ...req.query },
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
-  }
-  next();
-});
-
+// ── HTTP + Socket.io Server ──────────────────────────────────────────────────
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -56,14 +46,18 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
-
 socketHandler(io);
 
+// ── Security Headers (Helmet) ────────────────────────────────────────────────
 app.use(helmet());
+
+// ── Cookie Parser ────────────────────────────────────────────────────────────
 app.use(cookieParser());
+
+// ── Request Logger ───────────────────────────────────────────────────────────
 app.use(morgan("dev"));
 
-// ── X-Request-ID — add unique ID to every request for tracing ────────────────
+// ── X-Request-ID — unique trace ID for every request ────────────────────────
 app.use((req, res, next) => {
   const requestId = req.headers["x-request-id"] || crypto.randomUUID();
   req.requestId = requestId;
@@ -71,7 +65,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ── Request Timeout — 30s default, 120s for analysis routes ──────────────────
+// ── Request Timeout (30s default, 120s for AI analysis routes) ───────────────
 app.use((req, res, next) => {
   const isAnalysisRoute = req.path.includes("/analysis/");
   const timeoutMs = isAnalysisRoute ? 120000 : 30000;
@@ -85,9 +79,11 @@ app.use((req, res, next) => {
     }
   }, timeoutMs);
   res.on("finish", () => clearTimeout(timeout));
-  res.on("close", () => clearTimeout(timeout));
+  res.on("close",  () => clearTimeout(timeout));
   next();
 });
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [
@@ -98,7 +94,7 @@ app.use(cors({
       "http://127.0.0.1:5173",
       "https://admin-panel-three-blue-97.vercel.app"
     ].filter(Boolean);
-    
+
     if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
       callback(null, true);
     } else {
@@ -107,9 +103,13 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// ── Body Parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
+// ── HTTP Parameter Pollution Protection ──────────────────────────────────────
+// Flatten duplicate query params to prevent pollution attacks
 app.use((req, res, next) => {
   if (req.query) {
     const sanitized = {};
@@ -122,54 +122,182 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Rate Limiting ─────────────────────────────────────────────────────────────
+// Login: 10 attempts / 15 min per IP (brute force protection)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many login attempts. Please wait 15 minutes before trying again."
+  }
+});
+
+// Registration: 5 attempts / hour per IP
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many registration attempts from this IP. Please try again later."
+  }
+});
+
+// General API: 200 requests / 15 min per IP
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please slow down."
+  }
+});
+
+app.use("/api/", generalLimiter);
+app.use("/api/auth/login", loginLimiter);
+app.use("/api/auth/register", registerLimiter);
+
+// ── Database Init ─────────────────────────────────────────────────────────────
 (async () => {
   await connectDB();
   await sequelize.sync();
   console.log("✅ MySQL tables synced successfully.");
 
-  // Reset stale online statuses from any previous server crash
   const User = require("./models/User");
   await User.update({ isOnline: false }, { where: { isOnline: true } });
   console.log("🔄 Reset stale online statuses.");
 })();
 
+// ── Health Check ──────────────────────────────────────────────────────────────
+app.get("/health", async (req, res) => {
+  const health = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    services: {}
+  };
+
+  // Check DB
+  try {
+    await sequelize.authenticate();
+    health.services.database = "connected";
+  } catch {
+    health.services.database = "disconnected";
+    health.status = "degraded";
+  }
+
+  // Check Redis
+  try {
+    const { Redis } = require("@upstash/redis");
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+      await redis.ping();
+      health.services.cache = "connected";
+    } else {
+      health.services.cache = "not_configured";
+    }
+  } catch {
+    health.services.cache = "disconnected";
+  }
+
+  const statusCode = health.status === "ok" ? 200 : 503;
+  return res.status(statusCode).json(health);
+});
+
+// ── Swagger Docs ──────────────────────────────────────────────────────────────
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use("/api/auth", authRoutes);
-app.use("/api/auth", verifyRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api", protectedRoutes);
-app.use("/api", doctorRoutes);
-app.use("/api", analysisRoutes);
-app.use("/api", patientRoutes);
-app.use("/api", medicationRoutes);
-app.use("/api", historyRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/resources", resourceRoutes);
-app.use("/api", medicinesRouter);
-app.use("/api/ai", aiRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api", diseaseReportRoutes);
+// ── API Routes ────────────────────────────────────────────────────────────────
+app.use("/api/auth",          authRoutes);
+app.use("/api/auth",          verifyRoutes);
+app.use("/api/user",          userRoutes);
+app.use("/api",               protectedRoutes);
+app.use("/api",               doctorRoutes);
+app.use("/api",               analysisRoutes);
+app.use("/api",               patientRoutes);
+app.use("/api",               medicationRoutes);
+app.use("/api",               historyRoutes);
+app.use("/api/chat",          chatRoutes);
+app.use("/api/resources",     resourceRoutes);
+app.use("/api",               medicinesRouter);
+app.use("/api/ai",            aiRoutes);
+app.use("/api/admin",         adminRoutes);
+app.use("/api",               diseaseReportRoutes);
 app.use("/api/smart-history", smartHistoryRoutes);
-app.use("/api", standardRoutes);
+app.use("/api",               standardRoutes);
 
-app.get('/api/resources/medications', (req, res) => {
-  res.redirect(307, '/api/medicines/all');
+// Redirect old medications route to new medicines endpoint
+app.get("/api/resources/medications", (req, res) => {
+  res.redirect(307, "/api/medicines/all");
 });
 
+// Root
 app.get("/", (req, res) => {
-  res.send("Dermalyze Backend Running ✅");
+  res.json({
+    name: "Dermalyze API",
+    status: "running",
+    version: "2.0.0",
+    docs: `${req.protocol}://${req.get("host")}/api-docs`,
+    health: `${req.protocol}://${req.get("host")}/health`,
+  });
 });
 
+// 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    requestId: req.requestId,
+  });
 });
 
+// Global Error Handler
 app.use(errorHandler);
 
+// ── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5050;
-server.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Dermalyze server running on port ${PORT}`);
   console.log(`📚 Swagger docs: http://localhost:${PORT}/api-docs`);
-  await loadModels();
+  console.log(`❤️  Health check: http://localhost:${PORT}/health`);
+});
+
+// ── Graceful Shutdown ─────────────────────────────────────────────────────────
+// When Railway (or any host) sends SIGTERM, finish current requests then shut down
+const shutdown = (signal) => {
+  console.log(`\n⚠️  ${signal} received — starting graceful shutdown...`);
+  server.close(async () => {
+    console.log("✅ HTTP server closed. No new requests accepted.");
+    try {
+      await sequelize.close();
+      console.log("✅ Database connection closed.");
+    } catch (err) {
+      console.error("❌ Error closing DB:", err.message);
+    }
+    console.log("👋 Goodbye!");
+    process.exit(0);
+  });
+
+  // Force exit after 15 seconds if graceful shutdown hangs
+  setTimeout(() => {
+    console.error("❌ Graceful shutdown timed out. Forcing exit.");
+    process.exit(1);
+  }, 15000);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT",  () => shutdown("SIGINT"));
+
+// Catch unhandled promise rejections (prevent server crash)
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("⚠️  Unhandled Promise Rejection:", reason);
 });

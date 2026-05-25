@@ -3,13 +3,14 @@ const router = express.Router();
 const { getSmartPatients, getSmartTreatments } = require("./smartHistory.service");
 const protect = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/roleMiddleware");
+const { cache } = require("../middlewares/cacheMiddleware");
 
 // All smart-history routes require authentication and doctor privileges
 router.use(protect);
 router.use(requireRole("doctor"));
 
-// GET /api/smart-history/patients?disease=Eczema
-router.get("/patients", async (req, res) => {
+// GET /api/smart-history/patients?disease=Eczema (cached 10 min per disease)
+router.get("/patients", cache("smart_history_patients", 600), async (req, res) => {
   const doctorId = req.user.id;
   const disease = req.query.disease;
 
@@ -32,8 +33,8 @@ router.get("/patients", async (req, res) => {
   }
 });
 
-// GET /api/smart-history/treatments?disease=Eczema
-router.get("/treatments", async (req, res) => {
+// GET /api/smart-history/treatments?disease=Eczema (cached 10 min per disease)
+router.get("/treatments", cache("smart_history_treatments", 600), async (req, res) => {
   const doctorId = req.user.id;
   const disease = req.query.disease;
 

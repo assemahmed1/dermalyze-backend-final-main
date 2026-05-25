@@ -2,8 +2,9 @@ const express = require("express");
 const router = express.Router();
 const { getDiseaseReport } = require("./diseaseReport.service");
 const protect = require("../middlewares/authMiddleware");
+const { cache } = require("../middlewares/cacheMiddleware");
 
-router.get("/disease-report", protect, async (req, res) => {
+router.get("/disease-report", protect, cache("disease_report", 86400), async (req, res) => {
   const { disease } = req.query;
 
   if (!disease) {
