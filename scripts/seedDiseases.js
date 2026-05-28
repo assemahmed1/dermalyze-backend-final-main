@@ -234,27 +234,24 @@ const diseases = [
 const seedDiseases = async () => {
   try {
     await connectDB();
-    await sequelize.sync({ alter: true });
+    // No need to sync here — server startup already ran sync({ alter: true })
+    // Running sync again causes FK issues when child tables have orphaned rows
 
-    let inserted = 0;
-    let updated = 0;
+    const result = await Disease.bulkCreate(diseases, {
+      updateOnDuplicate: [
+        "scientificName",
+        "category",
+        "severity",
+        "generalInfo",
+        "symptoms",
+        "visualPatterns",
+        "treatments",
+        "imageUrl",
+        "updatedAt",
+      ],
+    });
 
-    for (const d of diseases) {
-      const [record, created] = await Disease.findOrCreate({
-        where: { name: d.name },
-        defaults: d,
-      });
-
-      if (!created) {
-        // Update with enriched data if record already exists
-        await record.update(d);
-        updated++;
-      } else {
-        inserted++;
-      }
-    }
-
-    console.log(`✅ Diseases seed complete: ${inserted} inserted, ${updated} updated. Total: ${diseases.length}.`);
+    console.log(`✅ Diseases seed complete: ${result.length} rows upserted (inserted or updated).`);
     process.exit(0);
   } catch (error) {
     console.error(`❌ Error seeding diseases: ${error.message}`);
