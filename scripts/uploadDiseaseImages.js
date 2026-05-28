@@ -564,26 +564,28 @@ async function tryWikipedia(articleTitle) {
 // ---------------------------------------------------------------------------
 // Fallback: search Wikimedia Commons for the disease
 // ---------------------------------------------------------------------------
-async function tryCommons(searchTerm) {
-  const encoded = encodeURIComponent(searchTerm + ' dermatology');
+async function tryCommons(searchTerm, qualifier = ' skin') {
+  const encoded = encodeURIComponent(searchTerm + qualifier);
   const url =
     `https://commons.wikimedia.org/w/api.php?action=query` +
     `&generator=search` +
     `&gsrnamespace=6` +
     `&gsrsearch=${encoded}` +
-    `&gsrlimit=5` +
+    `&gsrlimit=8` +
     `&prop=imageinfo` +
-    `&iiprop=url|mime` +
+    `&iiprop=url|mime|size` +
+    `&iiurlwidth=600` +
     `&format=json`;
   const data = await fetchJson(url);
   if (!data?.query?.pages) return null;
   const pages = Object.values(data.query.pages);
-  // Prefer JPEG/PNG images (avoid SVG diagrams)
+  // Return the 600px thumbnail URL — never the full-res URL (can be >50MB)
   for (const p of pages) {
     const info = p.imageinfo?.[0];
     if (!info) continue;
     if (info.mime === 'image/svg+xml') continue;
-    return info.url;
+    // thumburl is set when iiurlwidth is specified
+    if (info.thumburl) return info.thumburl;
   }
   return null;
 }
@@ -606,13 +608,19 @@ async function getImageUrl(diseaseName) {
   url = await tryWikiImages(articleTitle).catch(() => null);
   if (url) return url;
 
-  // 4. Try Commons search with article title
-  url = await tryCommons(articleTitle).catch(() => null);
+  // 4. Try Commons search with article title + 'skin'
+  url = await tryCommons(articleTitle, ' skin').catch(() => null);
   if (url) return url;
 
-  // 5. Try Commons with original disease name (if override was used)
+  // 5. Try Commons with article title, no qualifier (broader)
+  url = await tryCommons(articleTitle, '').catch(() => null);
+  if (url) return url;
+
+  // 6. Try Commons with original disease name (if override was used)
   if (articleTitle !== diseaseName) {
-    url = await tryCommons(diseaseName).catch(() => null);
+    url = await tryCommons(diseaseName, ' skin').catch(() => null);
+    if (url) return url;
+    url = await tryCommons(diseaseName, '').catch(() => null);
     if (url) return url;
   }
 
