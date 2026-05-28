@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Patient = require("../models/Patient");
 const bcrypt = require("bcryptjs");
 const { generateAccessToken, generateRefreshToken } = require("../utils/generateToken");
 const jwt = require("jsonwebtoken");
@@ -9,7 +10,7 @@ const { Op } = require("sequelize");
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, doctorCode } = req.body;
+    const { name, email, password, role } = req.body;
 
     // Check if email already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -54,32 +55,12 @@ exports.register = async (req, res) => {
       }
     }
 
-    // 👤 Patient
+    // 👤 Patient accounts are created by doctors via the magic link flow.
+    // Direct self-registration is not supported for patients.
     else {
-      let doctor = null;
-      if (doctorCode) {
-        doctor = await User.findOne({ where: { doctorCode, role: "doctor" } });
-        if (!doctor) {
-          return res.status(400).json({ message: "Invalid doctor code. Please ask your doctor for the correct code." });
-        }
-      }
-
-      user = await User.create({
-        name,
-        email,
-        password,
-        role: "patient",
-        doctorId: doctor ? doctor.id : null,
-        phone: req.body.phone || "",
-        nationalId: req.body.nationalId || "",
-        dateOfBirth: req.body.dateOfBirth || "",
-        diagnosis: req.body.diagnosis || null,
-        allergies: req.body.allergies || null
+      return res.status(400).json({
+        message: "Patient accounts are created by your doctor. Please ask your doctor to create your account."
       });
-
-      if (doctor) {
-        await doctor.addPatient(user);
-      }
     }
 
     const token = generateAccessToken(user.id, user.role);
@@ -233,6 +214,13 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
+    // Block patients who haven't activated their account yet
+    if (user.status === "pending_activation") {
+      return res.status(403).json({
+        message: "Please activate your account via the WhatsApp link sent to your phone"
+      });
+    }
+
     // Block pending or rejected doctors from logging in
     if (user.role === "doctor") {
       if (user.verificationStatus === "pending") {
@@ -336,6 +324,95 @@ exports.logout = async (req, res) => {
     });
     res.json({ success: true, message: "Logged out successfully" });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ================= ACTIVATE ACCOUNT (Magic Link) =================
+exports.activateAccount = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: "Token and new password are required" });
+    }
+
+    // Verify the magic link JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.MAGIC_LINK_SECRET);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: "Invalid or expired activation link. Please ask your doctor to resend the link." });
+    }
+
+    if (decoded.purpose !== "account_activation") {
+      return res.status(400).json({ success: false, message: "Invalid token purpose" });
+    }
+
+    // Find the user account
+    const user = await User.findByPk(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (user.status !== "pending_activation") {
+      return res.status(400).json({ success: false, message: "This account has already been activated" });
+    }
+
+    // Set the patient's real password — beforeUpdate hook will hash it automatically
+    user.password = password;
+    user.status = "active";
+    await user.save();
+
+    // Link the Patient clinical record to this user
+    if (decoded.patientId) {
+      await Patient.update(
+        { userId: user.id },
+        { where: { id: decoded.patientId } }
+      );
+    }
+
+    // Return a full access token so the patient is immediately logged in
+    const accessToken = generateAccessToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.role);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    // Fetch the linked clinical patient record for the response payload
+    const clinical = decoded.patientId
+      ? await Patient.findByPk(decoded.patientId)
+      : null;
+
+    res.json({
+      success: true,
+      message: "Account activated successfully",
+      token: accessToken,
+      user: {
+        id: user.id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone || "",
+        nationalId: user.nationalId || "",
+        dateOfBirth: user.dateOfBirth || "",
+        doctorId: user.doctorId ? user.doctorId.toString() : "",
+        diagnosis: user.diagnosis || null,
+        allergies: user.allergies || null,
+        ...(clinical ? {
+          nextAppointment: clinical.nextAppointment,
+          lastVisit: clinical.lastVisit,
+          recoveryProgress: clinical.recoveryProgress,
+          status: clinical.status
+        } : {})
+      }
+    });
+  } catch (error) {
+    console.error(`[ACTIVATE ACCOUNT ERROR] ${error.stack || error.message}`);
     res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -32,6 +32,10 @@ const User = sequelize.define(
       type: DataTypes.ENUM("doctor", "patient", "admin"),
       defaultValue: "patient",
     },
+    status: {
+      type: DataTypes.ENUM("pending_activation", "active"),
+      defaultValue: "active",
+    },
     doctorCode: {
       type: DataTypes.STRING,
       unique: true,

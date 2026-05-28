@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { register, login, refresh, logout } = require("../controllers/authController");
+const { register, login, refresh, logout, activateAccount } = require("../controllers/authController");
 const { registerRules, loginRules, validate } = require("../middlewares/validationMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
 const rateLimit = require("express-rate-limit");
@@ -122,5 +122,37 @@ router.post("/refresh", refresh);
  *     tags: [Auth]
  */
 router.post("/logout", logout);
+
+/**
+ * @swagger
+ * /auth/activate:
+ *   post:
+ *     summary: Activate patient account via magic link token
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: JWT magic link token received via WhatsApp
+ *               password:
+ *                 type: string
+ *                 description: New password the patient wants to set
+ *                 example: "MyNew@Password1"
+ *     responses:
+ *       200:
+ *         description: Account activated — returns access token and user data
+ *       400:
+ *         description: Invalid or expired token, or account already active
+ *       404:
+ *         description: User not found
+ */
+router.post("/activate", activateAccount);
 
 module.exports = router;

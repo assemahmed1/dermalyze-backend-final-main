@@ -1,4 +1,8 @@
 const Patient = require("../models/Patient");
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const { sendActivationLink } = require("../services/whatsappService");
 const { getOrCreatePatient } = require("../utils/patientUtils");
 
 const createPatient = async (req, res) => {
@@ -9,17 +13,71 @@ const createPatient = async (req, res) => {
       return res.status(400).json({ message: "Missing fields" });
     }
 
+    // 1. Create the clinical patient record
     const patient = await Patient.create({
       name, age, gender, diagnosis,
       nationalId, phone, address, medicalHistory,
       doctorId: req.user.id,
     });
 
-    res.status(201).json(patient);
+    // 2. Auto-create a User account for the patient
+    //    Use a random unguessable password — patient will set their own via magic link
+    const randomPassword = crypto.randomBytes(32).toString("hex");
+
+    //    Derive a placeholder email from patient id (must be unique and valid)
+    const placeholderEmail = `patient_${patient.id}@dermalyze.internal`;
+
+    const patientUser = await User.create({
+      name,
+      email: placeholderEmail,
+      password: randomPassword,       // beforeCreate hook will bcrypt-hash this
+      role: "patient",
+      status: "pending_activation",
+      doctorId: req.user.id,
+      phone: phone || "",
+      nationalId: nationalId || "",
+    });
+
+    // 3. Link the User record back to the Patient record
+    patient.userId = patientUser.id;
+    await patient.save();
+
+    // 4. Generate a 48-hour magic link JWT using MAGIC_LINK_SECRET
+    const magicToken = jwt.sign(
+      { userId: patientUser.id, patientId: patient.id, purpose: "account_activation" },
+      process.env.MAGIC_LINK_SECRET,
+      { expiresIn: "48h" }
+    );
+
+    // 5. Send WhatsApp activation message — non-fatal if it fails
+    let whatsappSent = false;
+    if (phone) {
+      const waResult = await sendActivationLink(phone, name, magicToken);
+      whatsappSent = waResult.success;
+      if (!waResult.success) {
+        console.error(`[WHATSAPP WARNING] Patient ${patient.id} created but WhatsApp failed: ${waResult.error}`);
+      }
+    } else {
+      console.error(`[WHATSAPP WARNING] Patient ${patient.id} has no phone number — WhatsApp not sent`);
+    }
+
+    const response = {
+      success: true,
+      message: "Patient created successfully",
+      patient,
+      whatsappSent,
+    };
+
+    if (!whatsappSent) {
+      response.warning = "WhatsApp activation message could not be sent. You may share the activation link manually.";
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 const getPatients = async (req, res, next) => {
   try {

@@ -25,10 +25,6 @@ const registerRules = [
     .optional()
     .isIn(["doctor", "patient"])
     .withMessage("Role must be doctor or patient"),
-  body("doctorCode")
-    .optional()
-    .isString()
-    .withMessage("Doctor code must be a string")
 ];
 
 // Login validation rules
