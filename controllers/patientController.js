@@ -1,5 +1,6 @@
 const Patient = require("../models/Patient");
 const User = require("../models/User");
+const Disease = require("../models/Disease");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendActivationLink } = require("../services/whatsappService");
@@ -7,15 +8,33 @@ const { getOrCreatePatient } = require("../utils/patientUtils");
 
 const createPatient = async (req, res) => {
   try {
-    const { name, age, gender, diagnosis, nationalId, phone, address, medicalHistory } = req.body;
+    const {
+      name, age, gender, nationalId, phone, address, medicalHistory,
+      diagnosis: diagnosisStr,
+      diagnosisId,
+    } = req.body;
 
     if (!name || !age || !gender) {
       return res.status(400).json({ message: "Missing fields" });
     }
 
+    // Resolve diagnosis string — prefer the FK lookup for consistency
+    let resolvedDiagnosis = diagnosisStr || "";
+    if (diagnosisId) {
+      const disease = await Disease.findByPk(diagnosisId, {
+        attributes: ["name"],
+      });
+      if (!disease) {
+        return res.status(400).json({ message: "Invalid diagnosisId — disease not found" });
+      }
+      resolvedDiagnosis = disease.name;
+    }
+
     // 1. Create the clinical patient record
     const patient = await Patient.create({
-      name, age, gender, diagnosis,
+      name, age, gender,
+      diagnosis: resolvedDiagnosis,
+      diagnosisId: diagnosisId || null,
       nationalId, phone, address, medicalHistory,
       doctorId: req.user.id,
     });

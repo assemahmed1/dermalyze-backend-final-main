@@ -14,13 +14,11 @@ const Medication = require("./Medication");
 const Conversation = require("./Conversation");
 const Message = require("./Message");
 const Notification = require("./Notification");
-const ClinicalDisease = require("./ClinicalDisease");
 const ClinicalMedication = require("./ClinicalMedication");
 const Disease = require("./Disease");
 const DiseaseReport = require("./DiseaseReport");
 const SmartPatient = require("./SmartPatient");
 const SmartDoctor = require("./SmartDoctor");
-const SmartDisease = require("./SmartDisease");
 const SmartTreatment = require("./SmartTreatment");
 const SmartPatientDisease = require("./SmartPatientDisease");
 const SmartImprovementRate = require("./SmartImprovementRate");
@@ -38,18 +36,18 @@ User.hasMany(User, { as: "patients", foreignKey: "doctorId" });
 Disease.hasOne(DiseaseReport, { foreignKey: "diseaseId", as: "report", onDelete: "CASCADE" });
 DiseaseReport.belongsTo(Disease, { foreignKey: "diseaseId", as: "disease" });
 
-// Smart History relationships
-SmartPatient.belongsToMany(SmartDisease, {
+// Smart History relationships — disease_id now points to unified Diseases table
+SmartPatient.belongsToMany(Disease, {
   through: SmartPatientDisease,
   foreignKey: "patient_id",
   otherKey: "disease_id",
   as: "diseases"
 });
-SmartDisease.belongsToMany(SmartPatient, {
+Disease.belongsToMany(SmartPatient, {
   through: SmartPatientDisease,
   foreignKey: "disease_id",
   otherKey: "patient_id",
-  as: "patients"
+  as: "smartPatients"
 });
 
 SmartPatient.hasMany(SmartImprovementRate, { foreignKey: "patient_id", as: "improvementRates" });
@@ -82,6 +80,10 @@ Patient.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
 User.hasOne(Patient, { foreignKey: "userId", onDelete: "CASCADE" });
 Patient.belongsTo(User, { as: "user", foreignKey: "userId" });
 
+// Patient → Disease (canonical diagnosis)
+Disease.hasMany(Patient, { foreignKey: "diagnosisId", as: "patients" });
+Patient.belongsTo(Disease, { as: "disease", foreignKey: "diagnosisId" });
+
 // Patient → Images
 Patient.hasMany(PatientImage, { as: "images", foreignKey: "patientId", onDelete: "CASCADE" });
 PatientImage.belongsTo(Patient, { foreignKey: "patientId" });
@@ -109,6 +111,10 @@ Medication.belongsTo(Patient, { as: "patient", foreignKey: "patientId" });
 User.hasMany(Medication, { foreignKey: "doctorId" });
 Medication.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
 
+// Medication → ClinicalMedication (canonical drug reference)
+ClinicalMedication.hasMany(Medication, { foreignKey: "clinicalMedicationId", as: "prescriptions" });
+Medication.belongsTo(ClinicalMedication, { as: "clinicalMedication", foreignKey: "clinicalMedicationId" });
+
 // Message
 User.hasMany(Message, { as: "sentMessages", foreignKey: "senderId" });
 User.hasMany(Message, { as: "receivedMessages", foreignKey: "receiverId" });
@@ -135,13 +141,11 @@ module.exports = {
   Conversation,
   Message,
   Notification,
-  ClinicalDisease,
   ClinicalMedication,
   Disease,
   DiseaseReport,
   SmartPatient,
   SmartDoctor,
-  SmartDisease,
   SmartTreatment,
   SmartPatientDisease,
   SmartImprovementRate,

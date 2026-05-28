@@ -32,6 +32,7 @@ const aiRoutes          = require("./routes/aiRoutes");
 const adminRoutes       = require("./routes/adminRoutes");
 const smartHistoryRoutes   = require("./routes/smartHistory");
 const diseaseReportRoutes  = require("./routes/diseaseReport.routes");
+const diseaseRoutes        = require("./routes/diseaseRoutes");
 const standardRoutes    = require("./routes/standardRoutes");
 const errorHandler      = require("./middlewares/errorHandler");
 const socketHandler     = require("./services/socketHandler");
@@ -236,6 +237,7 @@ app.use("/api",               medicinesRouter);
 app.use("/api/ai",            aiRoutes);
 app.use("/api/admin",         adminRoutes);
 app.use("/api",               diseaseReportRoutes);
+app.use("/api/diseases",      diseaseRoutes);
 app.use("/api/smart-history", smartHistoryRoutes);
 app.use("/api",               standardRoutes);
 

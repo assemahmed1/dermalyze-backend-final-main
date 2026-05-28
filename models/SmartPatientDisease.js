@@ -15,9 +15,10 @@ const SmartPatientDisease = sequelize.define(
     disease_id: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
+      // Now references the unified Diseases table instead of smart_diseases
       references: {
-        model: "smart_diseases",
-        key: "disease_id",
+        model: "Diseases",
+        key: "id",
       },
     },
   },
@@ -27,7 +28,7 @@ const SmartPatientDisease = sequelize.define(
   }
 );
 
-// Define complex primary key for composite relationships if needed
+// Composite PK — no auto-increment id
 SmartPatientDisease.removeAttribute("id");
 
 module.exports = SmartPatientDisease;

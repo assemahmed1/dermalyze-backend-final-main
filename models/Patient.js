@@ -41,6 +41,12 @@ const Patient = sequelize.define(
       type: DataTypes.STRING,
       defaultValue: "",
     },
+    diagnosisId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      defaultValue: null,
+      references: { model: "Diseases", key: "id" },
+    },
     status: {
       type: DataTypes.ENUM("Improving", "Stable", "Critical"),
       defaultValue: "Stable",

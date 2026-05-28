@@ -19,6 +19,12 @@ const Medication = sequelize.define(
       allowNull: false,
       references: { model: "Users", key: "id" },
     },
+    clinicalMedicationId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      defaultValue: null,
+      references: { model: "ClinicalMedications", key: "id" },
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,

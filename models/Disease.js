@@ -16,11 +16,56 @@ const Disease = sequelize.define(
     },
     scientificName: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: "",
+    },
+    category: {
+      type: DataTypes.ENUM(
+        "Inflammatory",
+        "Autoimmune",
+        "Fungal",
+        "Bacterial",
+        "Viral",
+        "Parasitic",
+        "Neoplastic",
+        "Other"
+      ),
+      allowNull: true,
+      defaultValue: "Other",
+    },
+    severity: {
+      type: DataTypes.ENUM(
+        "Mild",
+        "Mild to Moderate",
+        "Moderate",
+        "Moderate to Severe",
+        "Severe"
+      ),
+      allowNull: true,
+      defaultValue: "Moderate",
     },
     generalInfo: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: "",
+    },
+    symptoms: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    visualPatterns: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "",
+    },
+    treatments: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+    },
+    imageUrl: {
+      type: DataTypes.STRING(1024),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -29,6 +74,7 @@ const Disease = sequelize.define(
     indexes: [
       { fields: ["name"] },
       { fields: ["scientificName"] },
+      { fields: ["category"] },
     ],
   }
 );
