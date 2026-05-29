@@ -64,6 +64,8 @@ exports.getPatients = async (req, res, next) => {
         diagnosis: p.diagnosis || null,
         isCritical: p.isCritical || false,
         status: status, // <-- Crucial for the Flutter App filtering
+        recoveryProgress: cp ? cp.recoveryProgress : 0,
+        recoveryRate: cp ? cp.recoveryProgress : 0,
         lastVisit: cp ? cp.lastVisit : null,
         nextAppointment: cp ? cp.nextAppointment : null
       };

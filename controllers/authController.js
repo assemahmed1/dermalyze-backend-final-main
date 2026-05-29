@@ -70,7 +70,7 @@ exports.register = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 90 * 24 * 60 * 60 * 1000 // 90 days
     });
 
     let patientData = {};
@@ -241,7 +241,7 @@ exports.login = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 90 * 24 * 60 * 60 * 1000 // 90 days
     });
 
     let patientData = {};
@@ -380,7 +380,7 @@ exports.activateAccount = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 90 * 24 * 60 * 60 * 1000 // 90 days
     });
 
     // Fetch the linked clinical patient record for the response payload
