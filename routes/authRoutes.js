@@ -125,6 +125,15 @@ router.post("/logout", logout);
 
 /**
  * @swagger
+ * /auth/magic-redirect:
+ *   get:
+ *     summary: Redirect to the Flutter app Custom Scheme
+ *     tags: [Auth]
+ */
+router.get("/magic-redirect", require("../controllers/authController").magicRedirect);
+
+/**
+ * @swagger
  * /auth/activate:
  *   post:
  *     summary: Activate patient account via magic link token

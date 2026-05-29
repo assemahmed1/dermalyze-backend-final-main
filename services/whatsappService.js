@@ -66,8 +66,8 @@ exports.sendWhatsAppMessage = async (phone, message) => {
  * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
  */
 exports.sendActivationLink = async (phone, patientName, token) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  const activationUrl = `${frontendUrl}/activate?token=${token}`;
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+  const activationUrl = `${backendUrl}/api/auth/magic-redirect?token=${token}`;
 
   const message =
     `مرحباً ${patientName} 👋\n` +
