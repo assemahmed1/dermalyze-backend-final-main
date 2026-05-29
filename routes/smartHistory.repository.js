@@ -6,24 +6,24 @@ async function getPatientsByDisease(doctorId, diseaseName) {
 
   const query = `
     SELECT DISTINCT
-      p.patient_id AS patient_id,
-      p.first_name  AS first_name,
-      p.last_name   AS last_name,
-      p.age         AS age,
-      p.gender      AS gender
-    FROM smart_patients p
-    INNER JOIN smart_patient_diseases pd ON p.patient_id = pd.patient_id
-    INNER JOIN Diseases d               ON pd.disease_id = d.id
-    INNER JOIN smart_improvement_rates ir ON p.patient_id = ir.patient_id
+      sp.patient_id,
+      sp.first_name,
+      sp.last_name,
+      sp.age,
+      sp.gender
+    FROM smart_patients sp
+    INNER JOIN Patients p ON p.name = CONCAT(sp.first_name, ' ', sp.last_name)
+    INNER JOIN Diseases d ON p.diagnosisId = d.id
+    INNER JOIN smart_improvement_rates ir ON sp.patient_id = ir.patient_id
     WHERE ir.doctor_id = :doctorId
-      AND LOWER(d.name) = :diseaseName
-    ORDER BY p.patient_id ASC
+      AND LOWER(d.name) LIKE :diseaseName
+    ORDER BY sp.patient_id ASC
   `;
 
   const results = await sequelize.query(query, {
     replacements: {
       doctorId: parseInt(doctorId, 10),
-      diseaseName: diseaseName.trim().toLowerCase()
+      diseaseName: `%${diseaseName.trim().toLowerCase()}%`
     },
     type: QueryTypes.SELECT
   });
@@ -35,31 +35,35 @@ async function getTreatmentsByDisease(doctorId, diseaseName) {
   if (!doctorId || !diseaseName) return [];
 
   const query = `
-    SELECT
-      t.name               AS treatment_name,
-      ROUND(AVG(ir.rate), 1) AS average_rate
+    SELECT 
+      t.name AS treatment_name,
+      t.dosage AS dosage,
+      ROUND(AVG(ir.rate), 1) AS average_rate,
+      COUNT(DISTINCT ir.patient_id) AS patient_count
     FROM smart_improvement_rates ir
-    INNER JOIN smart_treatments t        ON ir.treatment_id = t.treatment_id
-    INNER JOIN smart_patients p          ON ir.patient_id   = p.patient_id
-    INNER JOIN smart_patient_diseases pd ON p.patient_id    = pd.patient_id
-    INNER JOIN Diseases d               ON pd.disease_id   = d.id
+    INNER JOIN smart_treatments t ON ir.treatment_id = t.treatment_id
+    INNER JOIN smart_patients sp ON ir.patient_id = sp.patient_id
+    INNER JOIN Patients p ON p.name = CONCAT(sp.first_name, ' ', sp.last_name)
+    INNER JOIN Diseases d ON p.diagnosisId = d.id
     WHERE ir.doctor_id = :doctorId
-      AND LOWER(d.name) = :diseaseName
-    GROUP BY t.treatment_id, t.name
-    ORDER BY average_rate DESC
+      AND LOWER(d.name) LIKE :diseaseName
+    GROUP BY t.treatment_id, t.name, t.dosage
+    ORDER BY average_rate DESC, patient_count DESC
   `;
 
   const results = await sequelize.query(query, {
     replacements: {
       doctorId: parseInt(doctorId, 10),
-      diseaseName: diseaseName.trim().toLowerCase()
+      diseaseName: `%${diseaseName.trim().toLowerCase()}%`
     },
     type: QueryTypes.SELECT
   });
 
   return results.map(r => ({
     treatment_name: r.treatment_name,
-    average_rate: parseFloat(r.average_rate)
+    dosage: r.dosage,
+    average_rate: parseFloat(r.average_rate),
+    patient_count: parseInt(r.patient_count)
   }));
 }
 

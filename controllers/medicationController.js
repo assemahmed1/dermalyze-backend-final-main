@@ -10,6 +10,40 @@ exports.addMedication = async (req, res, next) => {
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     const medication = await Medication.create({ patientId: patient.id, doctorId: req.user.id, name, dosage, frequency, notes });
     res.status(201).json({ message: "Medication added", medication });
+
+    // --- Smart History fire-and-forget ---
+    (async () => {
+      try {
+        const SmartImprovementRate = require("../models/SmartImprovementRate");
+        const recoveryProgress = patient.recoveryProgress || 0;
+        const rate = Math.max(1, Math.min(5, Math.ceil((recoveryProgress / 100) * 5) || 1));
+        
+        // Find or create smart_patients entry just in case
+        const { sequelize } = require("../config/db");
+        await sequelize.query(`INSERT IGNORE INTO smart_patients (patient_id, first_name, last_name) VALUES (${patient.id}, '${patient.name.split(' ')[0] || patient.name}', '${patient.name.split(' ').slice(1).join(' ') || ''}')`);
+        // Find or create smart_treatments entry
+        let [treatment] = await sequelize.query(`SELECT treatment_id FROM smart_treatments WHERE name = '${name}' AND dosage = '${dosage}'`);
+        let treatmentId;
+        if (!treatment || treatment.length === 0) {
+          await sequelize.query(`INSERT INTO smart_treatments (name, dosage, \`usage\`, createdAt, updatedAt) VALUES ('${name}', '${dosage}', '${frequency || ""}', NOW(), NOW())`);
+          const [newTreatment] = await sequelize.query(`SELECT treatment_id FROM smart_treatments WHERE name = '${name}' AND dosage = '${dosage}'`);
+          treatmentId = newTreatment[0].treatment_id;
+        } else {
+          treatmentId = treatment[0].treatment_id;
+        }
+
+        await SmartImprovementRate.create({
+          patient_id: patient.id,
+          treatment_id: treatmentId,
+          doctor_id: req.user.id,
+          rate: rate,
+          status: "active",
+          date: new Date()
+        });
+      } catch (err) {
+        console.error("Smart History Error:", err);
+      }
+    })();
   } catch (error) { next(error); }
 };
 
