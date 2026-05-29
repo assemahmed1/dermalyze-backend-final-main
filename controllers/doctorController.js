@@ -139,8 +139,6 @@ exports.getPatientDetails = async (req, res, next) => {
       const rawImprovement = latestAnalysis.improvement;
       const match = rawImprovement.match(/([+-]?\d+(\.\d+)?)/);
       if (match) {
-        // Explicitly set recovery rate to match the exact improvement percentage
-        parsedRecovery = Math.max(0, Math.min(100, Math.round(parseFloat(match[1]))));
         // Format improvement string as just "+65.0%"
         improvementStr = (parseFloat(match[1]) >= 0 ? "+" : "") + match[1] + "%";
       }

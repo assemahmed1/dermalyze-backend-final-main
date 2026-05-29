@@ -22,6 +22,15 @@ exports.sendWhatsAppMessage = async (phone, message) => {
       return { success: false, error: "FONNTE_API_KEY not configured" };
     }
 
+    let formattedPhone = String(phone || "").trim();
+    if (formattedPhone.startsWith("0")) {
+      formattedPhone = "20" + formattedPhone.substring(1);
+    } else if (formattedPhone.startsWith("+20")) {
+      formattedPhone = formattedPhone.substring(1);
+    }
+
+    console.log(`[WHATSAPP INFO] Sending to target: ${formattedPhone}`);
+
     const response = await fetch(FONNTE_API_URL, {
       method: "POST",
       headers: {
@@ -29,7 +38,7 @@ exports.sendWhatsAppMessage = async (phone, message) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        target: phone,
+        target: formattedPhone,
         message,
       }),
     });
