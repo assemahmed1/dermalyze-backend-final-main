@@ -40,7 +40,8 @@ const socketHandler = (io) => {
     socket.on("send_message", async (data) => {
       try {
         const { receiverId, content, type, mediaUrl, durationMs } = data;
-        const finalType = type || "text";
+        const validTypes = ["text", "image", "audio", "file"];
+        const finalType = validTypes.includes(type) ? type : "text";
 
         if (!receiverId) {
           return socket.emit("error", { message: "receiverId is required" });

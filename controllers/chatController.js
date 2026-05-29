@@ -196,7 +196,8 @@ exports.sendMessage = async (req, res, next) => {
     }
 
     let mediaUrl = null;
-    let finalType = type || "text";
+    let validTypes = ["text", "image", "audio", "file"];
+    let finalType = validTypes.includes(type) ? type : "text";
     let finalDuration = durationMs ? parseInt(durationMs, 10) : null;
 
     if (req.file) {
