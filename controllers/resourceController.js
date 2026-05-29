@@ -1,6 +1,6 @@
 const { Op } = require("sequelize");
 const ClinicalMedication = require("../models/ClinicalMedication");
-const ClinicalDisease = require("../models/ClinicalDisease");
+const Disease = require("../models/Disease");
 
 /**
  * GET /api/resources/medications
@@ -27,10 +27,20 @@ exports.getDiseases = async (req, res, next) => {
     if (search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
-        { description: { [Op.like]: `%${search}%` } },
+        { generalInfo: { [Op.like]: `%${search}%` } },
       ];
     }
-    const diseases = await ClinicalDisease.findAll({ where, order: [["name", "ASC"]] });
-    res.json(diseases);
+    const diseases = await Disease.findAll({ where, order: [["name", "ASC"]] });
+    
+    // Map generalInfo to description for frontend compatibility
+    const formatted = diseases.map(d => {
+      const plain = d.get({ plain: true });
+      return {
+        ...plain,
+        description: plain.generalInfo,
+      };
+    });
+    
+    res.json(formatted);
   } catch (error) { next(error); }
 };
