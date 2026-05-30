@@ -98,7 +98,7 @@ PatientReview.belongsTo(Patient, { foreignKey: "patientId" });
 PatientReview.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
 
 // Analysis
-Patient.hasMany(Analysis, { foreignKey: "patientId", onDelete: "CASCADE" });
+Patient.hasMany(Analysis, { as: "analyses", foreignKey: "patientId", onDelete: "CASCADE" });
 Analysis.belongsTo(Patient, { foreignKey: "patientId" });
 User.hasMany(Analysis, { foreignKey: "doctorId" });
 Analysis.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
@@ -110,7 +110,7 @@ User.hasMany(Appointment, { foreignKey: "doctorId" });
 Appointment.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });
 
 // Medication
-Patient.hasMany(Medication, { foreignKey: "patientId", onDelete: "CASCADE" });
+Patient.hasMany(Medication, { as: "medications", foreignKey: "patientId", onDelete: "CASCADE" });
 Medication.belongsTo(Patient, { as: "patient", foreignKey: "patientId" });
 User.hasMany(Medication, { foreignKey: "doctorId" });
 Medication.belongsTo(User, { as: "doctor", foreignKey: "doctorId" });

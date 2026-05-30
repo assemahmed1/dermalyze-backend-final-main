@@ -12,8 +12,8 @@ async function getPatientsByDisease(doctorId, diseaseName) {
       sp.age,
       sp.gender
     FROM smart_patients sp
-    INNER JOIN Patients p ON p.name = CONCAT(sp.first_name, ' ', sp.last_name)
-    INNER JOIN Diseases d ON p.diagnosisId = d.id
+    INNER JOIN smart_patient_diseases spd ON sp.patient_id = spd.patient_id
+    INNER JOIN Diseases d ON spd.disease_id = d.id
     INNER JOIN smart_improvement_rates ir ON sp.patient_id = ir.patient_id
     WHERE ir.doctor_id = :doctorId
       AND LOWER(d.name) LIKE :diseaseName
@@ -43,8 +43,8 @@ async function getTreatmentsByDisease(doctorId, diseaseName) {
     FROM smart_improvement_rates ir
     INNER JOIN smart_treatments t ON ir.treatment_id = t.treatment_id
     INNER JOIN smart_patients sp ON ir.patient_id = sp.patient_id
-    INNER JOIN Patients p ON p.name = CONCAT(sp.first_name, ' ', sp.last_name)
-    INNER JOIN Diseases d ON p.diagnosisId = d.id
+    INNER JOIN smart_patient_diseases spd ON sp.patient_id = spd.patient_id
+    INNER JOIN Diseases d ON spd.disease_id = d.id
     WHERE ir.doctor_id = :doctorId
       AND LOWER(d.name) LIKE :diseaseName
     GROUP BY t.treatment_id, t.name, t.dosage
