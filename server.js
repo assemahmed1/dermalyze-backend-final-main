@@ -171,7 +171,7 @@ app.use("/api/auth/register", registerLimiter);
 // ── Database Init ─────────────────────────────────────────────────────────────
 (async () => {
   await connectDB();
-  await sequelize.sync({ alter: true });
+  await sequelize.sync({ alter: false });
 
   console.log("✅ MySQL tables synced successfully.");
 
