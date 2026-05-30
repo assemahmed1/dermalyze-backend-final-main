@@ -9,28 +9,54 @@ exports.addMedication = async (req, res, next) => {
     const patient = await getOrCreatePatient(patientId, req.user.id);
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     const medication = await Medication.create({ patientId: patient.id, doctorId: req.user.id, name, dosage, frequency, notes });
+
+    // Auto-link to ClinicalMedications by name fuzzy match
+    try {
+      const ClinicalMedication = require('../models/ClinicalMedication');
+      const { Op } = require('sequelize');
+      
+      const clinicalMatch = await ClinicalMedication.findOne({
+        where: {
+          name: { [Op.like]: `%${medication.name}%` }
+        }
+      });
+
+      if (clinicalMatch) {
+        await medication.update({ clinicalMedicationId: clinicalMatch.id });
+        console.log(`[MEDICATION LINK] "${medication.name}" linked to ClinicalMedication id=${clinicalMatch.id}`);
+      } else {
+        console.log(`[MEDICATION LINK] "${medication.name}" not found in ClinicalMedications — saved as free text`);
+      }
+    } catch (linkErr) {
+      console.error('[MEDICATION LINK ERROR]', linkErr.message);
+    }
+
     res.status(201).json({ message: "Medication added", medication });
 
     // --- Smart History fire-and-forget ---
     (async () => {
       try {
         const SmartImprovementRate = require("../models/SmartImprovementRate");
+        const SmartTreatment = require("../models/SmartTreatment");
         const recoveryProgress = patient.recoveryProgress || 0;
         const rate = Math.max(1, Math.min(5, Math.ceil((recoveryProgress / 100) * 5) || 1));
         
         // Find or create smart_patients entry just in case
         const { sequelize } = require("../config/db");
         await sequelize.query(`INSERT IGNORE INTO smart_patients (patient_id, first_name, last_name) VALUES (${patient.id}, '${patient.name.split(' ')[0] || patient.name}', '${patient.name.split(' ').slice(1).join(' ') || ''}')`);
+        
         // Find or create smart_treatments entry
-        let [treatment] = await sequelize.query(`SELECT treatment_id FROM smart_treatments WHERE name = '${name}' AND dosage = '${dosage}'`);
-        let treatmentId;
-        if (!treatment || treatment.length === 0) {
-          await sequelize.query(`INSERT INTO smart_treatments (name, dosage, \`usage\`, createdAt, updatedAt) VALUES ('${name}', '${dosage}', '${frequency || ""}', NOW(), NOW())`);
-          const [newTreatment] = await sequelize.query(`SELECT treatment_id FROM smart_treatments WHERE name = '${name}' AND dosage = '${dosage}'`);
-          treatmentId = newTreatment[0].treatment_id;
-        } else {
-          treatmentId = treatment[0].treatment_id;
-        }
+        const [smartTreatment] = await SmartTreatment.findOrCreate({
+          where: { name: medication.name },
+          defaults: {
+            name: medication.name,
+            dosage: medication.dosage || '',
+            usage: medication.frequency || '',
+            clinicalMedicationId: medication.clinicalMedicationId || null
+          }
+        });
+        
+        let treatmentId = smartTreatment.treatment_id;
 
         await SmartImprovementRate.create({
           patient_id: patient.id,

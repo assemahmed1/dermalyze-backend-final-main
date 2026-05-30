@@ -21,6 +21,11 @@ const SmartTreatment = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    clinicalMedicationId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      references: { model: "ClinicalMedications", key: "id" },
+    },
   },
   {
     tableName: "smart_treatments",
