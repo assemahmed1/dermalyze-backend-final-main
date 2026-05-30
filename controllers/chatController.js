@@ -270,6 +270,23 @@ exports.sendMessage = async (req, res, next) => {
           type: "chat",
           senderId: senderId.toString(),
         }
+      }).then(async (response) => {
+        if (response) {
+          // FCM Hand-off successful => Receiver's phone got the notification
+          // 1. Update message status to 'delivered'
+          await Message.update(
+            { status: "delivered" }, 
+            { where: { id: message.id, status: "sent" } }
+          );
+          
+          // 2. Emit 'message_delivered' to Sender's active socket instantly (Double Grey Ticks)
+          if (io) {
+            io.to(String(senderId)).emit("message_delivered", {
+              messageId: String(message.id),
+              receiverId: String(receiverId)
+            });
+          }
+        }
       }).catch((err) => {
         console.error("[FCM NOTIFICATION ERROR]", err.message);
       });
