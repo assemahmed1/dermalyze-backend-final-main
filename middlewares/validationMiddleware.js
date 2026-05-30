@@ -35,13 +35,9 @@ const loginRules = [
 
 // Create patient validation rules
 const patientRules = [
-  body("name").trim().notEmpty().withMessage("Patient name is required"),
-  body("age")
-    .isInt({ min: 0, max: 120 })
-    .withMessage("Age must be a valid number"),
-  body("gender")
-    .isIn(["male", "female"])
-    .withMessage("Gender must be male or female")
+  body("name").optional().trim().notEmpty().withMessage("Patient name is required"),
+  body("age").optional().isInt({ min: 0, max: 120 }).withMessage("Age must be a valid number"),
+  body("gender").optional().toLowerCase().isIn(["male", "female"]).withMessage("Gender must be male or female")
 ];
 
 // Forgot password rules

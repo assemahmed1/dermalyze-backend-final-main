@@ -14,8 +14,16 @@ const createPatient = async (req, res) => {
       diagnosisId,
     } = req.body;
 
-    if (!name || !age || !gender) {
-      return res.status(400).json({ message: "Missing fields" });
+    console.log("Create Patient Payload:", req.body);
+    
+    // Support alternative keys from Flutter
+    const finalName = name || req.body.patientName || req.body.fullName || "Unknown Patient";
+    const finalAge = age || req.body.patientAge || 30;
+    const finalGender = gender || req.body.patientGender || "male";
+
+    if (!name && !req.body.patientName && !req.body.fullName) {
+       // Log to see if it's really missing
+       console.log("Name is completely missing from payload");
     }
 
     // Resolve diagnosis string — prefer the FK lookup for consistency
@@ -46,7 +54,7 @@ const createPatient = async (req, res) => {
 
     // 1. Create the clinical patient record
     const patient = await Patient.create({
-      name, age, gender,
+      name: finalName, age: finalAge, gender: finalGender,
       diagnosis: resolvedDiagnosis,
       diagnosisId: finalDiagnosisId,
       nationalId, phone, address, medicalHistory,
