@@ -37,6 +37,42 @@ exports.getPatientReport = async (req, res, next) => {
     next(err);
   }
 };
+exports.getMyReport = async (req, res, next) => {
+  try {
+    // For patient app: ID is taken from the logged-in user token
+    const patientId = req.user.id;
+
+    const patient = await Patient.findByPk(patientId, {
+      include: [
+        { model: Disease, as: "disease" },
+        { model: Medication, as: "medications" },
+        { model: Analysis, as: "analyses", order: [["createdAt", "DESC"]], limit: 1 }
+      ]
+    });
+
+    if (!patient) {
+      return res.status(404).json({ success: false, message: "Patient not found" });
+    }
+
+    let diseaseInfo = null;
+    if (patient.disease && patient.disease.name) {
+      diseaseInfo = await getDiseaseReportFromDB(patient.disease.name);
+    }
+
+    const report = {
+      patientName: patient.name,
+      diagnosis: patient.disease ? patient.disease.name : "N/A",
+      recoveryProgress: patient.recoveryProgress || 0,
+      diseaseInfo: diseaseInfo,
+      medications: patient.medications,
+      latestAnalysis: patient.analyses && patient.analyses.length > 0 ? patient.analyses[0] : null
+    };
+
+    return res.status(200).json({ success: true, data: report });
+  } catch (err) {
+    next(err);
+  }
+};
 
 exports.sendPatientReportWhatsApp = async (req, res, next) => {
   try {
