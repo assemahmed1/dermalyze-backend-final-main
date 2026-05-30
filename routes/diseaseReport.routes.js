@@ -15,7 +15,7 @@ router.get("/disease-report", protect, cache("disease_report", 86400), async (re
   }
 
   try {
-    const report = await getDiseaseReport(disease);
+    const report = await getDiseaseReport(disease, req.user ? req.user.id : null);
 
     if (!report) {
       return res.status(404).json({
