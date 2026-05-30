@@ -4,9 +4,8 @@ const { QueryTypes } = require('sequelize');
 
 async function run() {
   await sequelize.authenticate();
-  
-  const d = await sequelize.query(`SELECT name, category FROM Diseases WHERE name LIKE '%Acne%'`, { type: QueryTypes.SELECT });
-  console.log("Diseases with Acne:", d);
+  const c = await sequelize.query(`SELECT count(*) as count FROM Disease_Reports`, { type: QueryTypes.SELECT });
+  console.log("Disease_Reports count:", c[0].count);
   process.exit(0);
 }
 run();
