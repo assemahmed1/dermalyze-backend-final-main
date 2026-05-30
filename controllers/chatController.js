@@ -17,6 +17,8 @@ const formatMessage = (msg) => {
     mediaUrl: plain.mediaUrl || null,
     durationMs: plain.durationMs !== undefined && plain.durationMs !== null ? Number(plain.durationMs) : null,
     isRead: plain.isRead !== undefined && plain.isRead !== null ? !!plain.isRead : false,
+    status: plain.status || "sent",
+    reaction: plain.reaction || null,
     createdAt: plain.createdAt ? (plain.createdAt.toISOString ? plain.createdAt.toISOString() : plain.createdAt) : new Date().toISOString()
   };
 };
@@ -111,27 +113,32 @@ exports.getConversations = async (req, res, next) => {
 };
 
 // @desc    Get message history with a specific user (supports pagination)
-// @route   GET /api/chat/messages/:receiverId?page=1&limit=50
+// @route   GET /api/chat/messages/:receiverId?limit=50&offset=0
 exports.getMessages = async (req, res, next) => {
   try {
     const { receiverId } = req.params;
     const myId = req.user.id;
 
-    const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 50;
-    const offset = (page - 1) * limit;
+    let offset = parseInt(req.query.offset, 10);
+    
+    // Fallback to page if offset is not provided
+    if (isNaN(offset)) {
+      const page = parseInt(req.query.page, 10) || 1;
+      offset = (page - 1) * limit;
+    }
 
     // 1. Mark all unread messages from this partner to me as read
     await Message.update(
-      { isRead: true },
-      { where: { senderId: receiverId, receiverId: myId, isRead: false } }
+      { isRead: true, status: "read" },
+      { where: { senderId: receiverId, receiverId: myId, status: { [Op.ne]: "read" } } }
     );
 
     // Emit read receipt Socket event to the partner in real-time
     const { getIO } = require("../services/socketHandler");
     const io = getIO();
     if (io) {
-      io.to(String(receiverId)).emit("messages_read", { readerId: myId });
+      io.to(String(receiverId)).emit("messages_read", { readerId: String(myId) });
     }
 
     // 2. Fetch history sorted latest first for correct offset pagination, and reverse for ascending chronological UI render
@@ -362,9 +369,40 @@ exports.deleteMessage = async (req, res, next) => {
       }
     }
 
+    // Emit real-time deletion event
+    const receiverId = message.receiverId;
+    const messageIdStr = String(message.id);
+    
     await message.destroy();
 
+    const { getIO } = require("../services/socketHandler");
+    const io = getIO();
+    if (io) {
+      io.to(String(receiverId)).emit("message_deleted", { messageId: messageIdStr });
+    }
+
     res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get user online status and last seen
+// @route   GET /api/chat/last-seen/:userId
+exports.getLastSeen = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findByPk(userId, { attributes: ["id", "isOnline", "lastSeen"] });
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      userId: user.id,
+      isOnline: user.isOnline,
+      lastSeen: user.lastSeen
+    });
   } catch (error) {
     next(error);
   }

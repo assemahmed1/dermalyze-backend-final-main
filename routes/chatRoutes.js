@@ -123,6 +123,7 @@ router.put("/messages/read", chatController.markAsRead);
  *         description: Message sent successfully
  */
 router.post("/send", upload.single("file"), chatController.sendMessage);
+router.get("/last-seen/:userId", validateObjectId("userId"), chatController.getLastSeen);
 router.delete("/messages/:messageId", chatController.deleteMessage);
 
 module.exports = router;

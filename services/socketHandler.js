@@ -32,6 +32,7 @@ const socketHandler = (io) => {
 
     // 1. Update online status
     await User.update({ isOnline: true }, { where: { id: userId } });
+    socket.broadcast.emit("user_online", { userId: String(userId) });
     
     // 2. Join a personal room for private messaging
     socket.join(String(userId));
@@ -97,17 +98,87 @@ const socketHandler = (io) => {
 
     // ⌨️ Handle typing status
     socket.on("typing", (data) => {
-      const { receiverId, isTyping } = data;
-      io.to(String(receiverId)).emit("user_typing", {
-        userId: userId,
-        isTyping,
-      });
+      const { receiverId } = data;
+      io.to(String(receiverId)).emit("user_typing", { userId: String(userId), isTyping: true });
+    });
+
+    socket.on("stop_typing", (data) => {
+      const { receiverId } = data;
+      io.to(String(receiverId)).emit("user_typing", { userId: String(userId), isTyping: false });
+    });
+
+    // 📩 Real-Time Read Receipts (Blue Ticks)
+    socket.on("mark_as_read", async (data) => {
+      try {
+        const { senderId } = data; // The user who sent the message to this socket user
+        if (!senderId) return;
+
+        // Update DB
+        await Message.update(
+          { isRead: true, status: "read" },
+          { where: { senderId, receiverId: userId, status: { [require("sequelize").Op.ne]: "read" } } }
+        );
+
+        // Notify the original sender that their messages were read
+        io.to(String(senderId)).emit("messages_read", { 
+          receiverId: String(userId),
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Error in mark_as_read:", err.message);
+      }
+    });
+
+    // 📩 Delivery Receipts (Double Grey Ticks)
+    socket.on("message_received", async (data) => {
+      try {
+        const { senderId, messageId } = data;
+        if (!senderId) return;
+
+        // Update DB
+        const whereClause = { senderId, receiverId: userId, status: "sent" };
+        if (messageId) whereClause.id = messageId;
+        
+        await Message.update(
+          { status: "delivered" },
+          { where: whereClause }
+        );
+
+        io.to(String(senderId)).emit("message_delivered", {
+          receiverId: String(userId),
+          messageId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Error in message_received:", err.message);
+      }
+    });
+
+    // 🎭 Real-Time Reactions
+    socket.on("react_to_message", async (data) => {
+      try {
+        const { messageId, reaction } = data;
+        if (!messageId) return;
+
+        const message = await Message.findByPk(messageId);
+        if (!message) return;
+
+        await message.update({ reaction });
+
+        // Emit to both sender and receiver so their UIs update instantly
+        const formatted = require("../controllers/chatController").formatMessage(message);
+        io.to(String(message.senderId)).emit("message_reacted", formatted);
+        io.to(String(message.receiverId)).emit("message_reacted", formatted);
+      } catch (err) {
+        console.error("Error in react_to_message:", err.message);
+      }
     });
 
     // 🔴 Handle disconnect
     socket.on("disconnect", async () => {
       console.log(`🔴 User disconnected: ${userId}`);
-      await User.update({ isOnline: false }, { where: { id: userId } });
+      await User.update({ isOnline: false, lastSeen: new Date() }, { where: { id: userId } });
+      socket.broadcast.emit("user_offline", { userId: String(userId), lastSeen: new Date().toISOString() });
     });
   });
 };

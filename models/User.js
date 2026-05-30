@@ -101,6 +101,11 @@ const User = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    lastSeen: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
     resetPasswordOTP: {
       type: DataTypes.STRING,
       defaultValue: null,
