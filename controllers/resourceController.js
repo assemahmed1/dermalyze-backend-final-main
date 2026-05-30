@@ -35,9 +35,20 @@ exports.getDiseases = async (req, res, next) => {
     // Map generalInfo to description for frontend compatibility
     const formatted = diseases.map(d => {
       const plain = d.get({ plain: true });
+      
+      const parseIfString = (val) => {
+        if (typeof val === 'string') {
+          try { return JSON.parse(val); } catch(e) { return []; }
+        }
+        return val || [];
+      };
+
       return {
         ...plain,
         description: plain.generalInfo,
+        symptoms: parseIfString(plain.symptoms),
+        treatments: parseIfString(plain.treatments),
+        visualPatterns: parseIfString(plain.visualPatterns)
       };
     });
     
