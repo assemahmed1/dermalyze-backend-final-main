@@ -54,10 +54,23 @@ function downloadImage(url, dest) {
   });
 }
 
-// ── Helper: Read image as base64 ─────────────────────────────────────────────
-function imageToBase64(filePath) {
-  const buffer = fs.readFileSync(filePath);
-  return buffer.toString("base64");
+// ── Helper: Read image as inlineData ─────────────────────────────────────────
+function getMimeType(filePath) {
+  const fd = fs.openSync(filePath, 'r');
+  const buffer = Buffer.alloc(4);
+  fs.readSync(fd, buffer, 0, 4, 0);
+  fs.closeSync(fd);
+  
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return "image/jpeg";
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return "image/png";
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) return "image/webp";
+  return "image/jpeg"; // fallback
+}
+
+function imageToInlineData(filePath) {
+  const base64 = fs.readFileSync(filePath).toString("base64");
+  const mimeType = getMimeType(filePath);
+  return { inlineData: { data: base64, mimeType } };
 }
 
 // ── PRIMARY: Gemini 1.5 Flash Analysis ───────────────────────────────────────
@@ -68,16 +81,14 @@ async function runGeminiAnalysis(currPath, prevPath, patientDiagnosis) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-  const currBase64 = imageToBase64(currPath);
-  const currPart = { inlineData: { data: currBase64, mimeType: "image/jpeg" } };
+  const currPart = imageToInlineData(currPath);
 
   let prompt;
   let parts;
 
   if (prevPath) {
     // ── Follow-up scan: compare two images ───────────────────────────────────
-    const prevBase64 = imageToBase64(prevPath);
-    const prevPart = { inlineData: { data: prevBase64, mimeType: "image/jpeg" } };
+    const prevPart = imageToInlineData(prevPath);
 
     prompt = `You are a medical AI assistant specializing in dermatology. 
 The patient has been diagnosed by their doctor with: "${patientDiagnosis}".
@@ -137,7 +148,10 @@ Respond ONLY in this exact JSON format (no markdown, no extra text):
   const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const result = await model.generateContent({ contents: [{ role: "user", parts }] });
+    const result = await model.generateContent({ 
+      contents: [{ role: "user", parts }],
+      generationConfig: { responseMimeType: "application/json" }
+    });
     clearTimeout(timeout);
 
     const text = result.response.text().trim();
