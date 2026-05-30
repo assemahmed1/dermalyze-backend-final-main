@@ -6,7 +6,8 @@ exports.getPatientReport = async (req, res, next) => {
   try {
     const { patientId } = req.params;
 
-    const patient = await Patient.findByPk(patientId, {
+    const patient = await Patient.findOne({
+      where: { userId: patientId },
       include: [
         { model: Disease, as: "disease" },
         { model: Medication, as: "medications" },
@@ -42,7 +43,8 @@ exports.getMyReport = async (req, res, next) => {
     // For patient app: ID is taken from the logged-in user token
     const patientId = req.user.id;
 
-    const patient = await Patient.findByPk(patientId, {
+    const patient = await Patient.findOne({
+      where: { userId: patientId },
       include: [
         { model: Disease, as: "disease" },
         { model: Medication, as: "medications" },
@@ -78,7 +80,8 @@ exports.sendPatientReportWhatsApp = async (req, res, next) => {
   try {
     const { patientId } = req.params;
 
-    const patient = await Patient.findByPk(patientId, {
+    const patient = await Patient.findOne({
+      where: { userId: patientId },
       include: [
         { model: Disease, as: "disease" },
         { model: Medication, as: "medications" },
