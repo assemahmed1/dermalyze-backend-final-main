@@ -43,7 +43,15 @@ exports.addMedication = async (req, res, next) => {
         
         // Find or create smart_patients entry just in case
         const { sequelize } = require("../config/db");
-        await sequelize.query(`INSERT IGNORE INTO smart_patients (patient_id, first_name, last_name) VALUES (${patient.id}, '${patient.name.split(' ')[0] || patient.name}', '${patient.name.split(' ').slice(1).join(' ') || ''}')`);
+        await sequelize.query(`INSERT IGNORE INTO smart_patients (patient_id, first_name, last_name, username, email, gender, age) VALUES (${patient.id}, '${patient.name.split(' ')[0] || patient.name}', '${patient.name.split(' ').slice(1).join(' ') || ''}', 'user_${patient.id}', 'patient_${patient.id}@dermalyze.internal', '${patient.gender || "male"}', ${patient.age || 25})`);
+        
+        // Link disease to patient in smart history if a diagnosis exists
+        if (patient.diagnosisId) {
+          const SmartPatientDisease = require("../models/SmartPatientDisease");
+          await SmartPatientDisease.findOrCreate({
+            where: { patient_id: patient.id, disease_id: patient.diagnosisId }
+          });
+        }
         
         // Find or create smart_treatments entry
         const [smartTreatment] = await SmartTreatment.findOrCreate({

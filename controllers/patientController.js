@@ -19,7 +19,11 @@ const createPatient = async (req, res) => {
     }
 
     // Resolve diagnosis string — prefer the FK lookup for consistency
+    let finalDiagnosisId = diagnosisId || null;
     let resolvedDiagnosis = diagnosisStr || "";
+    
+    const { Op } = require("sequelize");
+
     if (diagnosisId) {
       const disease = await Disease.findByPk(diagnosisId, {
         attributes: ["name"],
@@ -28,13 +32,23 @@ const createPatient = async (req, res) => {
         return res.status(400).json({ message: "Invalid diagnosisId — disease not found" });
       }
       resolvedDiagnosis = disease.name;
+    } else if (diagnosisStr) {
+      // Auto-link to Diseases by name fuzzy match
+      const matchedDisease = await Disease.findOne({
+        where: { name: { [Op.like]: `%${diagnosisStr.trim()}%` } }
+      });
+      
+      if (matchedDisease) {
+        finalDiagnosisId = matchedDisease.id;
+        resolvedDiagnosis = matchedDisease.name; // Normalize to exact DB name
+      }
     }
 
     // 1. Create the clinical patient record
     const patient = await Patient.create({
       name, age, gender,
       diagnosis: resolvedDiagnosis,
-      diagnosisId: diagnosisId || null,
+      diagnosisId: finalDiagnosisId,
       nationalId, phone, address, medicalHistory,
       doctorId: req.user.id,
     });
