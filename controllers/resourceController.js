@@ -45,10 +45,11 @@ exports.getDiseases = async (req, res, next) => {
 
       return {
         ...plain,
-        description: plain.generalInfo,
+        description: plain.generalInfo || "",
         symptoms: parseIfString(plain.symptoms),
         treatments: parseIfString(plain.treatments),
-        visualPatterns: parseIfString(plain.visualPatterns)
+        visualPatterns: parseIfString(plain.visualPatterns),
+        imageUrl: plain.imageUrl || ""
       };
     });
     
