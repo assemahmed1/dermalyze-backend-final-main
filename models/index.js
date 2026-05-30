@@ -36,6 +36,10 @@ User.hasMany(User, { as: "patients", foreignKey: "doctorId" });
 Disease.hasOne(DiseaseReport, { foreignKey: "diseaseId", as: "report", onDelete: "CASCADE" });
 DiseaseReport.belongsTo(Disease, { foreignKey: "diseaseId", as: "disease" });
 
+// Patient & DiseaseReport relationship
+Patient.hasMany(DiseaseReport, { foreignKey: "patientId", as: "reports", onDelete: "CASCADE" });
+DiseaseReport.belongsTo(Patient, { foreignKey: "patientId", as: "patient" });
+
 // Smart History relationships — disease_id now points to unified Diseases table
 SmartPatient.belongsToMany(Disease, {
   through: SmartPatientDisease,

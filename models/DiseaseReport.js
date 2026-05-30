@@ -17,6 +17,14 @@ const DiseaseReport = sequelize.define(
         key: "id",
       },
     },
+    patientId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      references: {
+        model: "Patients",
+        key: "id",
+      },
+    },
     symptoms: {
       type: DataTypes.JSON,
       defaultValue: [],
