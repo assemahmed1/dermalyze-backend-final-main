@@ -72,8 +72,8 @@ app.use((req, res, next) => {
 
 // ── Request Timeout (30s default, 120s for AI analysis routes) ───────────────
 app.use((req, res, next) => {
-  const isAnalysisRoute = req.path.includes("/analysis/");
-  const timeoutMs = isAnalysisRoute ? 120000 : 30000;
+  const isLongRoute = req.path.includes("/analysis/") || req.path.includes("/auth/register");
+  const timeoutMs = isLongRoute ? 120000 : 30000;
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
       res.status(503).json({
