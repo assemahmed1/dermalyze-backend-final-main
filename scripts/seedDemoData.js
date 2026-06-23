@@ -18,7 +18,24 @@ const DOCTOR_EMAIL = 'dr.ahmed.elsayed@dermalyze.com';
 const DOCTOR_PASS = 'Demo@2024';
 const PATIENT_PASS = 'Patient@2024';
 
-const WIKIMEDIA_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/4/4d/Acne_vulgaris_on_a_back.jpg";
+const caseImages = {
+  'Acne Vulgaris': [
+    "https://upload.wikimedia.org/wikipedia/commons/4/4d/Acne_vulgaris_on_a_back.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/b/b3/Acne_vulgaris_facial.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/6/66/Open_comedones.jpg"
+  ],
+  'Psoriasis': [
+    "https://upload.wikimedia.org/wikipedia/commons/9/91/Psoriasis_on_back.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/7/76/Plaque_psoriasis.jpg"
+  ],
+  'Atopic Dermatitis': [
+    "https://upload.wikimedia.org/wikipedia/commons/a/af/Atopic_dermatitis.jpg"
+  ],
+  'Vitiligo': [
+    "https://upload.wikimedia.org/wikipedia/commons/8/8f/Vitiligo2.JPG"
+  ]
+};
+const defaultImage = "https://upload.wikimedia.org/wikipedia/commons/4/4d/Acne_vulgaris_on_a_back.jpg";
 
 const patientData = [
   { name: 'Shawky Mohamed Abdullah', age: 28, gender: 'male', recovery: 75, email: 'shawky.demo@dermalyze.com', group: 'Acne Vulgaris' },
@@ -92,14 +109,18 @@ async function run() {
     // 1. DOCTOR
     let doctor = await User.findOne({ where: { email: DOCTOR_EMAIL } });
     if (!doctor) {
-      const hashed = await bcrypt.hash(DOCTOR_PASS, 10);
       doctor = await User.create({
         name: 'Dr. Ahmed Mahmoud El-Sayed',
         email: DOCTOR_EMAIL,
-        password: hashed,
+        password: DOCTOR_PASS,
         role: 'doctor',
         verificationStatus: 'verified',
-        status: 'active'
+        status: 'active',
+        phone: '+201012345678',
+        specialization: 'Consultant Dermatologist',
+        experience: '15 Years',
+        licenseNumber: 'MD-987654321',
+        nationalId: '28001011234567'
       });
       console.log("Created Doctor.");
     } else {
@@ -124,14 +145,16 @@ async function run() {
       console.log(`Processing patient: ${pd.name}`);
       let pUser = await User.findOne({ where: { email: pd.email } });
       if (!pUser) {
-        const hashedP = await bcrypt.hash(PATIENT_PASS, 10);
+        const randomPhone = "+201" + Math.floor(100000000 + Math.random() * 900000000).toString();
         pUser = await User.create({
           name: pd.name,
           email: pd.email,
-          password: hashedP,
+          password: PATIENT_PASS,
           role: 'patient',
           verificationStatus: 'verified',
-          status: 'active'
+          status: 'active',
+          phone: randomPhone,
+          dateOfBirth: new Date(Date.now() - pd.age * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
         });
       }
 
@@ -228,50 +251,51 @@ async function run() {
            });
         }
       }
-
       // Skin Analyses (Cloudinary image)
       await Analysis.destroy({ where: { patientId: patient.id } });
-      let uploadedImage;
+      let imageUrls = caseImages[pd.group] || [defaultImage];
+
+      // Upload 2 Cases (Self-Scans) by the Patient
+      // Case 1
+      let uploadedImage1;
       try {
-        const uploadResult = await cloudinary.uploader.upload(WIKIMEDIA_IMAGE, { folder: 'dermalyze/demo-patient-analyses' });
-        uploadedImage = uploadResult.secure_url;
+        let img1 = imageUrls[Math.floor(Math.random() * imageUrls.length)];
+        const res1 = await cloudinary.uploader.upload(img1, { folder: 'dermalyze/demo-patient-analyses' });
+        uploadedImage1 = res1.secure_url;
       } catch (err) {
-        console.error("Cloudinary failed, using mock URL:", err.message);
-        uploadedImage = "https://via.placeholder.com/400x400.png?text=Skin+Scan";
+        uploadedImage1 = "https://via.placeholder.com/400x400.png?text=Home+Scan+1";
       }
 
-      // Visit 1
       await Analysis.create({
         patientId: patient.id,
         doctorId: doctor.id,
-        imageUrl: uploadedImage,
-        result: "Baseline scan",
+        imageUrl: uploadedImage1,
+        result: "Patient Home Scan (Initial)",
         diagnosisLabel: pd.group,
         severity: "High",
+        stage: "Patient Upload",
         improvement: "0%",
-        createdAt: new Date(Date.now() - 90 * 24*60*60*1000)
-      });
-
-      // Visit 2
-      await Analysis.create({
-        patientId: patient.id,
-        doctorId: doctor.id,
-        imageUrl: uploadedImage,
-        result: "Follow up scan",
-        diagnosisLabel: pd.group,
-        severity: "Medium",
-        improvement: "20%",
         createdAt: new Date(Date.now() - 40 * 24*60*60*1000)
       });
 
-      // Visit 3
+      // Case 2
+      let uploadedImage2;
+      try {
+        let img2 = imageUrls[Math.floor(Math.random() * imageUrls.length)];
+        const res2 = await cloudinary.uploader.upload(img2, { folder: 'dermalyze/demo-patient-analyses' });
+        uploadedImage2 = res2.secure_url;
+      } catch (err) {
+        uploadedImage2 = "https://via.placeholder.com/400x400.png?text=Home+Scan+2";
+      }
+
       await Analysis.create({
         patientId: patient.id,
         doctorId: doctor.id,
-        imageUrl: uploadedImage,
-        result: "Recent scan",
+        imageUrl: uploadedImage2,
+        result: "Patient Home Scan (Recent)",
         diagnosisLabel: pd.group,
-        severity: "Low",
+        severity: "Medium",
+        stage: "Patient Upload",
         improvement: pd.recovery + "%",
         createdAt: new Date(Date.now() - 5 * 24*60*60*1000)
       });
