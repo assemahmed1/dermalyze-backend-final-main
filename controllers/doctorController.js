@@ -56,6 +56,17 @@ exports.getPatients = async (req, res, next) => {
       const cp = clinicalPatientsMap[p.id];
       let status = cp ? cp.status : (p.isCritical ? "Critical" : "Stable");
 
+      let age = 0;
+      if (p.dateOfBirth) {
+        const today = new Date();
+        const birthDate = new Date(p.dateOfBirth);
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+      }
+
       return {
         id: p.id.toString(),
         name: p.name,
@@ -64,6 +75,8 @@ exports.getPatients = async (req, res, next) => {
         diagnosis: p.diagnosis || null,
         isCritical: p.isCritical || false,
         status: status, // <-- Crucial for the Flutter App filtering
+        age: age,
+        birthDate: p.dateOfBirth || null,
         recoveryProgress: cp ? cp.recoveryProgress : 0,
         recoveryRate: cp ? cp.recoveryProgress : 0,
         lastVisit: cp ? cp.lastVisit : null,
