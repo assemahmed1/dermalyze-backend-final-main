@@ -198,6 +198,9 @@ async function run() {
         });
       } else {
         await patient.update({
+          name: pd.name,
+          age: pd.age,
+          gender: pd.gender,
           diagnosisId: dId,
           status: getStatus(pd.recovery),
           recoveryProgress: pd.recovery,
