@@ -56,14 +56,17 @@ exports.getPatients = async (req, res, next) => {
       const cp = clinicalPatientsMap[p.id];
       let status = cp ? cp.status : (p.isCritical ? "Critical" : "Stable");
 
-      let age = 0;
-      if (p.dateOfBirth) {
+      let age = cp && cp.age ? cp.age : 0;
+      if (p.dateOfBirth && !isNaN(new Date(p.dateOfBirth).getTime())) {
         const today = new Date();
         const birthDate = new Date(p.dateOfBirth);
-        age = today.getFullYear() - birthDate.getFullYear();
+        let calculatedAge = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
+          calculatedAge--;
+        }
+        if (!isNaN(calculatedAge)) {
+          age = calculatedAge;
         }
       }
 
@@ -159,6 +162,20 @@ exports.getPatientDetails = async (req, res, next) => {
       }
     }
 
+    let age = patientClinical && patientClinical.age ? patientClinical.age : 0;
+    if (user.dateOfBirth && !isNaN(new Date(user.dateOfBirth).getTime())) {
+      const today = new Date();
+      const birthDate = new Date(user.dateOfBirth);
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+      if (!isNaN(calculatedAge)) {
+        age = calculatedAge;
+      }
+    }
+
     // 3. Assemble detailed patient object
     const detailedPatient = {
       id: user.id.toString(),
@@ -169,6 +186,7 @@ exports.getPatientDetails = async (req, res, next) => {
       allergies: user.allergies || null,
       isCritical: user.isCritical || false,
       dateOfBirth: user.dateOfBirth || "",
+      age: age,
       nationalId: user.nationalId || "",
       // Clinical fields
       status: patientClinical ? patientClinical.status : (user.isCritical ? "Critical" : "Stable"),
