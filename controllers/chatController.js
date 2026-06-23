@@ -8,10 +8,25 @@ const { sendPushNotification } = require("../services/notificationService");
 // Helper to format messages to return exact required fields
 const formatMessage = (msg) => {
   const plain = typeof msg.get === "function" ? msg.get({ plain: true }) : msg;
-  return {
+
+  let senderId = plain.senderId;
+  let senderObj = undefined;
+  if (senderId && typeof senderId === 'object') {
+    senderObj = senderId;
+    senderId = senderId.id || senderId._id || "";
+  }
+
+  let receiverId = plain.receiverId;
+  let receiverObj = undefined;
+  if (receiverId && typeof receiverId === 'object') {
+    receiverObj = receiverId;
+    receiverId = receiverId.id || receiverId._id || "";
+  }
+
+  const formatted = {
     _id: plain.id ? plain.id.toString() : "",
-    senderId: plain.senderId ? plain.senderId.toString() : "",
-    receiverId: plain.receiverId ? plain.receiverId.toString() : "",
+    senderId: senderId ? senderId.toString() : "",
+    receiverId: receiverId ? receiverId.toString() : "",
     content: plain.content !== undefined && plain.content !== null ? plain.content : "",
     type: plain.type || "text",
     mediaUrl: plain.mediaUrl || null,
@@ -19,8 +34,14 @@ const formatMessage = (msg) => {
     isRead: plain.isRead !== undefined && plain.isRead !== null ? !!plain.isRead : false,
     status: plain.status || "sent",
     reaction: plain.reaction || null,
+    unreadCount: plain.unreadCount !== undefined ? Number(plain.unreadCount) : 0,
     createdAt: plain.createdAt ? (plain.createdAt.toISOString ? plain.createdAt.toISOString() : plain.createdAt) : new Date().toISOString()
   };
+
+  if (senderObj) formatted.sender = senderObj;
+  if (receiverObj) formatted.receiver = receiverObj;
+
+  return formatted;
 };
 
 
@@ -60,7 +81,7 @@ exports.getConversations = async (req, res, next) => {
     });
     const unreadMap = {};
     for (const row of unreadCounts) {
-      unreadMap[row.senderId] = parseInt(row.count, 10);
+      unreadMap[row.senderId] = Number(row.count) || 0;
     }
 
     // Build conversation map
@@ -76,7 +97,7 @@ exports.getConversations = async (req, res, next) => {
         receiverId: partnerId.toString(),
         lastMessage: lastMsgText,
         time: msg.createdAt,
-        unreadCount: unreadMap[partnerId] || 0,
+        unreadCount: Number(unreadMap[partnerId]) || 0,
       };
     }
 
@@ -243,12 +264,18 @@ exports.sendMessage = async (req, res, next) => {
 
     const formatted = formatMessage(message);
 
+    // Calculate unreadCount for the receiver to include in the real-time event
+    const unreadCount = await Message.count({
+      where: { receiverId, senderId, isRead: false }
+    });
+    formatted.unreadCount = Number(unreadCount) || 0;
+
     // Emit real-time Socket.io events to receiver and sender (to prevent any sync/polling latency)
     const { getIO } = require("../services/socketHandler");
     const io = getIO();
     if (io) {
       io.to(String(receiverId)).emit("receive_message", formatted);
-      io.to(String(senderId)).emit("receive_message", formatted);
+      io.to(String(senderId)).emit("message_sent", formatted);
       console.log(`📡 Emitted receive_message Socket event for message ID ${message.id} from HTTP POST`);
     }
 
@@ -258,7 +285,7 @@ exports.sendMessage = async (req, res, next) => {
       User.findByPk(receiverId)
     ]);
 
-    if (receiver && receiver.fcmToken && receiver.pushNotifications !== false) {
+    if (receiver && !receiver.isOnline && receiver.fcmToken && receiver.pushNotifications !== false) {
       const bodyText = finalType === "text"
         ? (content || "")
         : `[${finalType.charAt(0).toUpperCase() + finalType.slice(1)}]`;

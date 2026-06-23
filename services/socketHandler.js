@@ -65,15 +65,21 @@ const socketHandler = (io) => {
         const { formatMessage } = require("../controllers/chatController");
         const formatted = formatMessage(message);
 
-        // Emit to receiver's personal room
-        io.to(String(receiverId)).emit("receive_message", formatted);
+        // Calculate unreadCount for the receiver to include in the real-time event
+        const unreadCount = await Message.count({
+          where: { receiverId, senderId: userId, isRead: false }
+        });
+        formatted.unreadCount = Number(unreadCount) || 0;
+
+        // Emit to receiver's personal room using socket.to to avoid echo
+        socket.to(String(receiverId)).emit("receive_message", formatted);
         
         // Also emit back to sender for confirmation
         socket.emit("message_sent", formatted);
 
         // Trigger background FCM push notification
         const receiver = await User.findByPk(receiverId);
-        if (receiver && receiver.fcmToken && receiver.pushNotifications !== false) {
+        if (receiver && !receiver.isOnline && receiver.fcmToken && receiver.pushNotifications !== false) {
           const bodyText = finalType === "text"
             ? (content || "")
             : `[${finalType.charAt(0).toUpperCase() + finalType.slice(1)}]`;
@@ -99,12 +105,12 @@ const socketHandler = (io) => {
     // ⌨️ Handle typing status
     socket.on("typing", (data) => {
       const { receiverId } = data;
-      io.to(String(receiverId)).emit("user_typing", { userId: String(userId), isTyping: true });
+      socket.to(String(receiverId)).emit("user_typing", { userId: String(userId), isTyping: true });
     });
 
     socket.on("stop_typing", (data) => {
       const { receiverId } = data;
-      io.to(String(receiverId)).emit("user_typing", { userId: String(userId), isTyping: false });
+      socket.to(String(receiverId)).emit("user_typing", { userId: String(userId), isTyping: false });
     });
 
     // 📩 Real-Time Read Receipts (Blue Ticks)
@@ -167,8 +173,8 @@ const socketHandler = (io) => {
 
         // Emit to both sender and receiver so their UIs update instantly
         const formatted = require("../controllers/chatController").formatMessage(message);
-        io.to(String(message.senderId)).emit("message_reacted", formatted);
-        io.to(String(message.receiverId)).emit("message_reacted", formatted);
+        socket.to(String(message.receiverId)).emit("message_reacted", formatted);
+        socket.emit("message_reacted", formatted);
       } catch (err) {
         console.error("Error in react_to_message:", err.message);
       }
