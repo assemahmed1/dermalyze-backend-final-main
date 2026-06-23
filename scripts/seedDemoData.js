@@ -108,23 +108,28 @@ async function run() {
 
     // 1. DOCTOR
     let doctor = await User.findOne({ where: { email: DOCTOR_EMAIL } });
+    const doctorData = {
+      name: 'Dr. Ahmed Mahmoud El-Sayed',
+      role: 'doctor',
+      verificationStatus: 'verified',
+      status: 'active',
+      phone: '+201012345678',
+      specialization: 'Consultant Dermatologist',
+      experience: '15 Years',
+      licenseNumber: 'MD-987654321',
+      nationalId: '28001011234567'
+    };
+
     if (!doctor) {
       doctor = await User.create({
-        name: 'Dr. Ahmed Mahmoud El-Sayed',
+        ...doctorData,
         email: DOCTOR_EMAIL,
         password: DOCTOR_PASS,
-        role: 'doctor',
-        verificationStatus: 'verified',
-        status: 'active',
-        phone: '+201012345678',
-        specialization: 'Consultant Dermatologist',
-        experience: '15 Years',
-        licenseNumber: 'MD-987654321',
-        nationalId: '28001011234567'
       });
       console.log("Created Doctor.");
     } else {
-      console.log("Doctor exists.");
+      await doctor.update(doctorData);
+      console.log("Updated existing Doctor.");
     }
 
     // Ensure SmartDoctor exists
@@ -144,17 +149,29 @@ async function run() {
     for (const pd of patientData) {
       console.log(`Processing patient: ${pd.name}`);
       let pUser = await User.findOne({ where: { email: pd.email } });
+      const randomPhone = "+201" + Math.floor(100000000 + Math.random() * 900000000).toString();
+      const dob = new Date(Date.now() - pd.age * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const pData = {
+        name: pd.name,
+        role: 'patient',
+        verificationStatus: 'verified',
+        status: 'active',
+        dateOfBirth: dob
+      };
+
       if (!pUser) {
-        const randomPhone = "+201" + Math.floor(100000000 + Math.random() * 900000000).toString();
         pUser = await User.create({
-          name: pd.name,
+          ...pData,
           email: pd.email,
           password: PATIENT_PASS,
-          role: 'patient',
-          verificationStatus: 'verified',
-          status: 'active',
           phone: randomPhone,
-          dateOfBirth: new Date(Date.now() - pd.age * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        });
+      } else {
+        // Only update phone if not already a +201... number to preserve consistency, or just overwrite
+        await pUser.update({
+          ...pData,
+          phone: pUser.phone ? pUser.phone : randomPhone
         });
       }
 
